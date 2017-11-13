@@ -1,0 +1,11 @@
+
+
+example code used to build nn.py 
+https://github.com/fchollet/keras/blob/master/examples/mnist_mlp.py
+
+haven't watched, but a lecture on keranos
+https://www.youtube.com/watch?v=Tp3SaRbql4k
+
+
+look into getting the pixel representation of the game here:
+http://www.pygame.org/docs/ref/surface.html#pygame.Surface.get_view
