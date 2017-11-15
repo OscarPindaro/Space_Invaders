@@ -8,32 +8,21 @@ overview: https://www.youtube.com/watch?v=Tp3SaRbql4k
 '''
 
 from __future__ import print_function
-
 import keras
 from keras.datasets import mnist
 from keras.models import Sequential
 from keras.layers import Dense, Dropout
 from keras.optimizers import RMSprop
-
-#for model recognition
-from keras.models import model_from_json
+from keras.models import model_from_json	#for model recognition
 import json
+import numpy as np 						#for weight saving
+import random
+import math
 
-#for weight saving
-import numpy as np
-
-'''
-Should probably look into this.
-(venv) &e$python test.py 
-Using TensorFlow backend.
-/Users/andykeene/Desktop/pg/venv/lib/python3.6/importlib/_bootstrap.py:219: RuntimeWarning: compiletime version 3.5 of module 'tensorflow.python.framework.fast_tensor_util' does not match runtime version 3.6
-  return f(*args, **kwds)
-2017-11-12 18:09:55.616182: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
-'''
 
 
 #returns the number of corrent predictions over len(x_train) images
-def test(model, x_train, y_train):
+def evaluate(model, x_train, y_train):
 	score = 0
 	for i, img in enumerate(x_train):
 		#hack: see https://stackoverflow.com/questions/39950311/keras-error-on-predict
@@ -49,8 +38,62 @@ def test(model, x_train, y_train):
 		if(label == prediction):
 			score += 1
 
-	return score
+	return score / len(x_train)
 
+def cross_over(A, B, mutation_pct):
+	'''
+	A and B are weight sets for neural nets
+	Returns: Weight sets C and D for children, which mutations
+	  of A and B
+	'''
+	C = []
+	D = []
+	for i, row in enumerate(A):
+		gene = random.randint(1, len(A)-1)
+		t = np.concatenate([A[i][:gene], B[i][gene:]])
+		if mutation_pct():
+			t[gene] = math.sqrt(A[i][gene] * B[i][gene])
+		s = np.concatenate([B[i][:gene], A[i][gene:]])
+		if mutation_pct():
+			s[gene] = math.sqrt(A[i][gene] * B[i][gene])
+		C.append(t)
+		D.append(s)
+	return C, D
+
+def get_model_JSON():
+	'''
+	Returns a JSON obj representing te network architcure
+	3-layer CNN
+	documentation here: https://keras.io/layers/core/
+	notes: maybe change to sigmoid activation, check biases, remove dropout?
+	'''
+	model = Sequential()
+	model.add(Dense(512, kernel_initializer='random_uniform', bias_initializer='random_normal', activation='relu', input_shape=(784,)))
+	model.add(Dropout(0.2))
+	model.add(Dense(512, activation='relu'))
+	model.add(Dropout(0.2))
+	model.add(Dense(num_classes, activation='softmax'))
+	model.summary()
+	return model.to_json()
+
+def init_gene_pool(model_json, population_size):
+	'''
+	Returns a list, of size population_size, of initialized neurel nets
+	according to the architecture described by the model_json
+	Note: the model_json describes the functions for weight distributions
+	'''
+	return [
+		model_from_json(model_json).get_weights()
+		for x in range(population_size)
+	]
+
+def choose_pairs(pairs_to_breed):
+	'''
+	Returns (0,1), (2,3), ...
+	'''
+	return [
+		(i*2, i*2+1) for i in range(pairs_to_breed)
+	]
 
 
 batch_size = 128
@@ -75,110 +118,70 @@ y_train = keras.utils.to_categorical(y_train, num_classes)
 y_test = keras.utils.to_categorical(y_test, num_classes)
 
 
-# Lets build the model! (3 layer with softmax output)
-# Dense() and Dropout() documentation here: https://keras.io/layers/core/
-model = Sequential()
-#Dense(output number, activation function, input shape - only necessary for first layer)
-#NOTE: the _initializers describe the distributions to the weights
-model.add(Dense(512, kernel_initializer='random_uniform', bias_initializer='random_normal', activation='relu', input_shape=(784,)))
-#randomly drops output during training updates at the rate given? probs. not necessary...
-model.add(Dropout(0.2))
-model.add(Dense(512, activation='relu'))
-model.add(Dropout(0.2))
-#catagorizer to 10 classes, see https://keras.io/activations/
-model.add(Dense(num_classes, activation='softmax'))
-#prints layer overview to stdout, the model is now defined
-model.summary()
 
+# start here:
+population_size = 100
+generations = 20
+fitness = lambda n: evaluate(n, x_train[:100], y_train[:100])
+mutation_count = 15
+mutation_pct = lambda: random.randint(0,500) == 1
+pairs_to_breed = 2
 
 # lets create a population, using the same model but
 # different initialized weights, the model.to_json gives a description of 
 # the nets architecture such as, weigh initilization, layers, connectivity, etc.
-model_json = model.to_json()
-population = []
-for genes_to_add in range(10):
-	# this should create a new net using the same architecture, but
-	# with different weights for each layer?
-	population.append(model_from_json(model_json))
+model_json = get_model_JSON()
+base_agent = model_from_json(model_json)
+
+#list of weights
+gene_pool = init_gene_pool(model_json, population_size)
 
 
 # lets score the population by testing each one on the same 100 images
-scores = []
-for member in population:
-	scores.append(test(member, x_train[:100], y_train[:100]))
+ranking = []
+for weights in gene_pool:
+	base_agent.set_weights(weights)
+	ranking.append((fitness(base_agent), weights))
 
-#yay! each one is different and so implies diff. weight initilizations.
-print('scores', scores)
+#now lets run over some generations
+for generation in range(generations):
+	#keep the population constant
+	ranking.sort(key=lambda m: m[0], reverse=True)
+	ranking = ranking[:population_size]
+
+	#now kill the weakest members of the population
+	scores = [score[0] for score in ranking]
+	print('Generation: ', generation, ' top 20 rankings: ', scores[:20])
+
+	for m, n in choose_pairs(pairs_to_breed):
+		print('breeding ', m, ' and ', n)
+		
+		father_score, father = ranking[m]
+		mother_score, mother = ranking[n]
+
+		child1, child2 = cross_over(father, mother, mutation_pct)
+
+		base_agent.set_weights(child1)
+		ranking.append((fitness(base_agent), child1))
+		base_agent.set_weights(child2)
+		ranking.append((fitness(base_agent), child2))
+
+
+'''
+
+print('type child {} type father {}'.format(type(child1), type(father)))
+		for i, x in enumerate(father):
+			if len(father[i]) != len(child1[i]):
+				print('len row ', i, ' not equal')
+				print(len(father[i]), ' ',len(child1[i]))
+			if type(father[i]) != type(child1[i]):
+				print('type row ', i, ' not equal')
+				print(type(father[i]), ' ', type(child1[i]))
+
+		#print(' ', child1)
+		#print(' ', child2)
+
+'''
+
 
 #TODO: now the hard part... breeding these kids.
-
-
-
-'''
-	GARBAGE BIN:
-
-# this is a test to see if the models have the same weights... they dont!
-# but they ALL predict with the same accuracy?
-model1 = model_from_json(model_json)
-model2 = model_from_json(model_json)
-
-weights1 = model1.get_weights()
-weights2 = model2.get_weights()
-
-print('np equal ? ', np.array_equal(weights1, weights2))
-print('w1 ', weights1)
-print('w1 ', weights2)
-
-
-
-# get the layers weights and print them
-w = model.get_weights()
-print('weight layers....', len(w))
-for i, layer in enumerate(w):
-	print('layer: {}, length: {} \nValues:{}'.format(i, len(layer), layer))
-
-
-# get dictionary config from model (can be used to instantiate new model)
-base_model_config = model.get_config()
-print('config : {}'.format(base_model_config))
-weights = model.get_weights()
-
-#gets the config for the network (not the wieghts!) as a JSON obj.
-end_model_config = model.to_json()
-print('config : {}'.format(end_model_config))
-
-
-
-		if(label == pred):
-			print('Correct prediction')
-		else:
-			print('Incorrect prediction')
-
-
-for i, member in enumerate(population):
-	if np.array_equal(population[i].get_weights(), population[i+1].get_weights()):
-		print('same weightS!')
-
-print('models prediction ', model_prediction, ' label ', y_train[i])
-
-
-#this is needed for gradient descent methods, but shouldn't be for
-# our manual one...
-model.compile(loss='categorical_crossentropy',
-              optimizer=RMSprop(),
-              metrics=['accuracy'])
-
-history = model.fit(x_train, y_train,
-                    batch_size=batch_size,
-                    epochs=epochs,
-                    verbose=1,
-                    validation_data=(x_test, y_test))
-score = model.evaluate(x_test, y_test, verbose=0)
-
-print('Test loss:', score[0])
-print('Test accuracy:', score[1])
-
-'''
-
-
-

@@ -9,3 +9,90 @@ https://www.youtube.com/watch?v=Tp3SaRbql4k
 
 look into getting the pixel representation of the game here:
 http://www.pygame.org/docs/ref/surface.html#pygame.Surface.get_view
+
+
+'''
+	GARBAGE BIN:
+
+
+w = population[0].get_weights()
+print('wieghts', w)
+print('dim = ', len(w), ' ', type(w))
+for i, x in enumerate(w):
+	print(i, ' ', type(x), ' ', len(x))
+
+
+
+Should probably look into this.
+(venv) &e$python test.py 
+Using TensorFlow backend.
+/Users/andykeene/Desktop/pg/venv/lib/python3.6/importlib/_bootstrap.py:219: RuntimeWarning: compiletime version 3.5 of module 'tensorflow.python.framework.fast_tensor_util' does not match runtime version 3.6
+  return f(*args, **kwds)
+2017-11-12 18:09:55.616182: I tensorflow/core/platform/cpu_feature_guard.cc:137] Your CPU supports instructions that this TensorFlow binary was not compiled to use: SSE4.1 SSE4.2 AVX AVX2 FMA
+
+
+# this is a test to see if the models have the same weights... they dont!
+# but they ALL predict with the same accuracy?
+model1 = model_from_json(model_json)
+model2 = model_from_json(model_json)
+
+weights1 = model1.get_weights()
+weights2 = model2.get_weights()
+
+print('np equal ? ', np.array_equal(weights1, weights2))
+print('w1 ', weights1)
+print('w1 ', weights2)
+
+
+
+# get the layers weights and print them
+w = model.get_weights()
+print('weight layers....', len(w))
+for i, layer in enumerate(w):
+	print('layer: {}, length: {} \nValues:{}'.format(i, len(layer), layer))
+
+
+# get dictionary config from model (can be used to instantiate new model)
+base_model_config = model.get_config()
+print('config : {}'.format(base_model_config))
+weights = model.get_weights()
+
+#gets the config for the network (not the wieghts!) as a JSON obj.
+end_model_config = model.to_json()
+print('config : {}'.format(end_model_config))
+
+
+
+		if(label == pred):
+			print('Correct prediction')
+		else:
+			print('Incorrect prediction')
+
+
+for i, member in enumerate(population):
+	if np.array_equal(population[i].get_weights(), population[i+1].get_weights()):
+		print('same weightS!')
+
+print('models prediction ', model_prediction, ' label ', y_train[i])
+
+
+#this is needed for gradient descent methods, but shouldn't be for
+# our manual one...
+model.compile(loss='categorical_crossentropy',
+              optimizer=RMSprop(),
+              metrics=['accuracy'])
+
+history = model.fit(x_train, y_train,
+                    batch_size=batch_size,
+                    epochs=epochs,
+                    verbose=1,
+                    validation_data=(x_test, y_test))
+score = model.evaluate(x_test, y_test, verbose=0)
+
+print('Test loss:', score[0])
+print('Test accuracy:', score[1])
+
+'''
+
+
+
