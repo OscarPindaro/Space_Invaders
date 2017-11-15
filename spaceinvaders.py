@@ -288,6 +288,8 @@ class Text(object):
 
 class SpaceInvaders(object):
 	def __init__(self):
+		# global game
+		# game = SpaceInvaders()
 		mixer.pre_init(44100, -16, 1, 512)
 		init()
 		self.caption = display.set_caption('Space Invaders')
@@ -296,6 +298,8 @@ class SpaceInvaders(object):
 		self.startGame = False
 		self.mainScreen = True
 		self.gameOver = False
+		self.action = None
+		self.pause = True
 		# Initial value for a new game
 		self.enemyPositionDefault = 65
 		# Counter for enemy starting position (increased each new round)
@@ -331,6 +335,8 @@ class SpaceInvaders(object):
 		self.makeNewShip = False
 		self.shipAlive = True
 		self.killedArray = [[0] * 10 for x in range(5)]
+		self.action = None
+		self.pause = True
 
 	def make_blockers(self, number):
 		blockerGroup = sprite.Group()
@@ -415,19 +421,19 @@ class SpaceInvaders(object):
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
 	def get_action(self):
-		while(action == False):
-    		 
 		self.keys = key.get_pressed()
+		# print(self.action, self.pause)
+		action = randint(0,2)
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
-		action = randint(0,2)
-		if(action == 0):
+		if(self.action == 0):
 			self.shoot()
-		if(action == 1):
+		if(self.action == 1):
 			self.player.move_left()
-		if(action == 2):
+		if(self.action == 2):
 			self.player.move_right()
+
 	def get_genetic_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
@@ -657,6 +663,7 @@ class SpaceInvaders(object):
 						self.livesText.draw(self.screen)
 						self.livesGroup.update(self.keys)
 						# self.check_input()
+						print('worrrld')
 						self.get_action()
 					if currentTime - self.gameTimer > 3000:
 						# Move enemies closer to bottom
@@ -704,11 +711,13 @@ if __name__ == '__main__':
 	game = SpaceInvaders()
 	print(args.iterations)
 	game.main(args.iterations)
-global game
+
 class Start:
 	def __init__(self, iterations):
 		global game
 		game = SpaceInvaders()
 		game.main(2)
-	def do_action(action):
-		return game
+	def do_action(self,action):
+		game.action = action
+		print(game.action)
+		game.pause = false
