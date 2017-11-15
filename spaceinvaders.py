@@ -415,6 +415,8 @@ class SpaceInvaders(object):
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
 	def get_action(self):
+		while(action == False):
+    		 
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
@@ -622,7 +624,9 @@ class SpaceInvaders(object):
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
-
+	def create_new_game(self, iterations):
+		self.main(iterations)
+		game = self
 	def main(self, it):
 		i = 0
 		scoreList = set()
@@ -693,8 +697,6 @@ class SpaceInvaders(object):
 			self.clock.tick(60)
 		print(scoreList)
 
-				
-
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-i','--iterations',type=int)
@@ -702,3 +704,11 @@ if __name__ == '__main__':
 	game = SpaceInvaders()
 	print(args.iterations)
 	game.main(args.iterations)
+global game
+class Start:
+	def __init__(self, iterations):
+		global game
+		game = SpaceInvaders()
+		game.main(2)
+	def do_action(action):
+		return game
