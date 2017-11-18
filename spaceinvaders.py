@@ -417,6 +417,8 @@ class SpaceInvaders(object):
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
 	def get_action(self):
+		text = Text(FONT, 20, str("Test"), GREEN, 100, 5)
+		text.draw(self.screen)
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
@@ -671,7 +673,7 @@ class SpaceInvaders(object):
 						self.livesText.draw(self.screen)
 						self.livesGroup.update(self.keys)
 						# self.check_input()
-						self.get_state()
+						#self.get_state()
 						self.get_action()
 					if currentTime - self.gameTimer > 3000:
 						# Move enemies closer to bottom
@@ -689,7 +691,7 @@ class SpaceInvaders(object):
 					self.scoreText2.draw(self.screen)
 					self.livesText.draw(self.screen)
 					# self.check_input()
-					self.get_state()
+					#self.get_state()
 					self.get_action()
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
 					self.explosionsGroup.update(self.keys, currentTime)
