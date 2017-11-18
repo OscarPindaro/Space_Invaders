@@ -686,6 +686,7 @@ class SpaceInvaders(object):
 				self.enemyPositionStart = self.enemyPositionDefault
 				self.create_game_over(currentTime)
 				scoreList.add((i, self.score))
+				##TODO: investigate error 
 				if(i >= it):
 					break
 				
