@@ -34,15 +34,18 @@ class Ship(sprite.Sprite):
 			self.rect.x -= self.speed
 		if keys[K_RIGHT] and self.rect.x < 740:
 			self.rect.x += self.speed
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 	def move_left(self):
 		if self.rect.x > 10:
 			self.rect.x -= self.speed
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 	def move_right(self):
 		if self.rect.x < 740:
 			self.rect.x += self.speed
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 
 
 class Bullet(sprite.Sprite):
@@ -56,7 +59,8 @@ class Bullet(sprite.Sprite):
 		self.filename = filename
 
 	def update(self, keys, *args):
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):	
+			game.screen.blit(self.image, self.rect)
 		self.rect.y += self.speed * self.direction
 		if self.rect.y < 15 or self.rect.y > 600:
 			self.kill()
@@ -123,7 +127,8 @@ class Enemy(sprite.Sprite):
 			self.image = self.images[self.index]
 
 			self.timer += self.moveTime
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 
 	def check_column_deletion(self, killedRow, killedColumn, killedArray):
 		if killedRow != -1 and killedColumn != -1:
@@ -177,7 +182,8 @@ class Blocker(sprite.Sprite):
 	   self.column = column
 
 	def update(self, keys, *args):
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 
 
 class Mystery(sprite.Sprite):
@@ -202,11 +208,13 @@ class Mystery(sprite.Sprite):
 		if (currentTime - self.timer > self.moveTime) and self.rect.x < 840 and self.direction == 1:
 			self.mysteryEntered.fadeout(4000)
 			self.rect.x += 2
-			game.screen.blit(self.image, self.rect)
+			if(SCREEN_ON):
+				game.screen.blit(self.image, self.rect)
 		if (currentTime - self.timer > self.moveTime) and self.rect.x > -100 and self.direction == -1:
 			self.mysteryEntered.fadeout(4000)
 			self.rect.x -= 2
-			game.screen.blit(self.image, self.rect)
+			if(SCREEN_ON):
+				game.screen.blit(self.image, self.rect)
 		if (self.rect.x > 830):
 			self.playSound = True
 			self.direction = -1
@@ -234,29 +242,35 @@ class Explosion(sprite.Sprite):
 			self.load_image()
 			self.image = transform.scale(self.image, (40, 35))
 			self.rect = self.image.get_rect(topleft=(xpos, ypos))
-			game.screen.blit(self.image, self.rect)
+			if(SCREEN_ON):
+				game.screen.blit(self.image, self.rect)
 			
 		self.timer = time.get_ticks()
 		
 	def update(self, keys, currentTime):
 		if self.isMystery:
 			if currentTime - self.timer <= 200:
-				self.text.draw(game.screen)
+				if(SCREEN_ON):
+					self.text.draw(game.screen)
 			if currentTime - self.timer > 400 and currentTime - self.timer <= 600:
-				self.text.draw(game.screen)
+				if(SCREEN_ON):
+					self.text.draw(game.screen)
 			if currentTime - self.timer > 600:
 				self.kill()
 		elif self.isShip:
 			if currentTime - self.timer > 300 and currentTime - self.timer <= 600:
-				game.screen.blit(self.image, self.rect)
+				if(SCREEN_ON):
+					game.screen.blit(self.image, self.rect)
 			if currentTime - self.timer > 900:
 				self.kill()
 		else:
 			if currentTime - self.timer <= 100:
-				game.screen.blit(self.image, self.rect)
+				if(SCREEN_ON):
+					game.screen.blit(self.image, self.rect)
 			if currentTime - self.timer > 100 and currentTime - self.timer <= 200:
 				self.image = transform.scale(self.image, (50, 45))
-				game.screen.blit(self.image, (self.rect.x-6, self.rect.y-6))
+				if(SCREEN_ON):
+					game.screen.blit(self.image, (self.rect.x-6, self.rect.y-6))
 			if currentTime - self.timer > 400:
 				self.kill()
 	
@@ -273,7 +287,8 @@ class Life(sprite.Sprite):
 		self.rect = self.image.get_rect(topleft=(xpos, ypos))
 		
 	def update(self, keys, *args):
-		game.screen.blit(self.image, self.rect)
+		if(SCREEN_ON):
+			game.screen.blit(self.image, self.rect)
 
 
 class Text(object):
@@ -283,7 +298,8 @@ class Text(object):
 		self.rect = self.surface.get_rect(topleft=(xpos, ypos))
 
 	def draw(self, surface):
-		surface.blit(self.surface, self.rect)
+		if(SCREEN_ON):
+			surface.blit(self.surface, self.rect)
 
 
 class SpaceInvaders(object):
@@ -503,10 +519,11 @@ class SpaceInvaders(object):
 		self.enemy3 = transform.scale(self.enemy3 , (40, 40))
 		self.enemy4 = IMAGES["mystery"]
 		self.enemy4 = transform.scale(self.enemy4 , (80, 40))
-		self.screen.blit(self.enemy1, (318, 270))
-		self.screen.blit(self.enemy2, (318, 320))
-		self.screen.blit(self.enemy3, (318, 370))
-		self.screen.blit(self.enemy4, (299, 420))
+		if(SCREEN_ON):
+			self.screen.blit(self.enemy1, (318, 270))
+			self.screen.blit(self.enemy2, (318, 320))
+			self.screen.blit(self.enemy3, (318, 370))
+			self.screen.blit(self.enemy4, (299, 420))
 
 		for e in event.get():
 			if e.type == QUIT:
@@ -607,15 +624,18 @@ class SpaceInvaders(object):
 			self.shipAlive = True
 
 	def create_game_over(self, currentTime):
-		self.screen.blit(self.background, (0,0))
+		if(SCREEN_ON):
+			self.screen.blit(self.background, (0,0))
 		if currentTime - self.timer < 750:
 			self.gameOverText.draw(self.screen)
 		if currentTime - self.timer > 750 and currentTime - self.timer < 1500:
-			self.screen.blit(self.background, (0,0))
+			if(SCREEN_ON):
+				self.screen.blit(self.background, (0,0))
 		if currentTime - self.timer > 1500 and currentTime - self.timer < 2250:
 			self.gameOverText.draw(self.screen)
 		if currentTime - self.timer > 2250 and currentTime - self.timer < 2750:
-			self.screen.blit(self.background, (0,0))
+			if(SCREEN_ON):
+				self.screen.blit(self.background, (0,0))
 		if currentTime - self.timer > 3000:
 			self.mainScreen = True
 		
@@ -630,27 +650,29 @@ class SpaceInvaders(object):
 			if self.mainScreen:
 				i +=1
 				self.reset(0, 1, True)
-				self.screen.blit(self.background, (0,0))
-				self.titleText.draw(self.screen)
-				self.titleText2.draw(self.screen)
-				self.enemy1Text.draw(self.screen)
-				self.enemy2Text.draw(self.screen)
-				self.enemy3Text.draw(self.screen)
-				self.enemy4Text.draw(self.screen)
-				self.create_main_menu()
+				if(SCREEN_ON):
+					self.screen.blit(self.background, (0,0))
+					self.titleText.draw(self.screen)
+					self.titleText2.draw(self.screen)
+					self.enemy1Text.draw(self.screen)
+					self.enemy2Text.draw(self.screen)
+					self.enemy3Text.draw(self.screen)
+					self.enemy4Text.draw(self.screen)
+					self.create_main_menu()
 				self.startGame = True
 				self.mainScreen = False
 
 			elif self.startGame:
 				if len(self.enemies) == 0:
 					currentTime = time.get_ticks()
-					if currentTime - self.gameTimer < 3000:              
-						self.screen.blit(self.background, (0,0))
-						self.scoreText2 = Text(FONT, 20, str(self.score), GREEN, 85, 5)
-						self.scoreText.draw(self.screen)
-						self.scoreText2.draw(self.screen)
-						self.nextRoundText.draw(self.screen)
-						self.livesText.draw(self.screen)
+					if currentTime - self.gameTimer < 3000:
+						if(SCREEN_ON):         
+							self.screen.blit(self.background, (0,0))
+							self.scoreText2 = Text(FONT, 20, str(self.score), GREEN, 85, 5)
+							self.scoreText.draw(self.screen)
+							self.scoreText2.draw(self.screen)
+							self.nextRoundText.draw(self.screen)
+							self.livesText.draw(self.screen)
 						self.livesGroup.update(self.keys)
 						# self.check_input()
 						self.get_action()
@@ -662,13 +684,14 @@ class SpaceInvaders(object):
 						self.gameTimer += 3000
 				else:
 					currentTime = time.get_ticks()
-					self.play_main_music(currentTime)              
-					self.screen.blit(self.background, (0,0))
-					self.allBlockers.update(self.screen)
-					self.scoreText2 = Text(FONT, 20, str(self.score), GREEN, 85, 5)
-					self.scoreText.draw(self.screen)
-					self.scoreText2.draw(self.screen)
-					self.livesText.draw(self.screen)
+					if(SCREEN_ON):
+						self.play_main_music(currentTime)              
+						self.screen.blit(self.background, (0,0))
+						self.allBlockers.update(self.screen)
+						self.scoreText2 = Text(FONT, 20, str(self.score), GREEN, 85, 5)
+						self.scoreText.draw(self.screen)
+						self.scoreText2.draw(self.screen)
+						self.livesText.draw(self.screen)
 					# self.check_input()
 					self.get_action()
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
@@ -698,7 +721,9 @@ class SpaceInvaders(object):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-i','--iterations',type=int)
+	parser.add_argument('-s','--screen',action='store_true')
 	args = parser.parse_args()
+	global SCREEN_ON, SCREEN, FONT, IMG_NAMES, IMAGES
+	SCREEN_ON = args.screen
 	game = SpaceInvaders()
-	print(args.iterations)
 	game.main(args.iterations)
