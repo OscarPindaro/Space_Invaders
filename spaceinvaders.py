@@ -317,8 +317,8 @@ class SpaceInvaders(object):
 		self.enemyPosition = self.enemyPositionStart
 		self.make_enemies()
 		# Only create blockers on a new game, not a new round
-		if newGame:
-			self.allBlockers = sprite.Group(self.make_blockers(0), self.make_blockers(1), self.make_blockers(2), self.make_blockers(3))
+		#if newGame:
+		#	self.allBlockers = sprite.Group(self.make_blockers(0), self.make_blockers(1), self.make_blockers(2), self.make_blockers(3))
 		self.keys = key.get_pressed()
 		self.clock = time.Clock()
 		self.timer = time.get_ticks()
@@ -514,10 +514,10 @@ class SpaceInvaders(object):
 			if type(spr).__name__ == 'Mystery':
 				if x >= 0 and y >= 0 and x < width and y <= height:
 					state_array[x][y] = 4
-		for blocker in self.allBlockers:
-			x = mth.floor(blocker.rect.center[0] / factor)-1
-			y = mth.floor(blocker.rect.center[1] / factor)-1
-			state_array[x][y] = 5
+		#for blocker in self.allBlockers:
+		#	x = mth.floor(blocker.rect.center[0] / factor)-1
+		#	y = mth.floor(blocker.rect.center[1] / factor)-1
+		#	state_array[x][y] = 5
 		return state_array
 
 	def create_main_menu(self):
@@ -620,9 +620,9 @@ class SpaceInvaders(object):
 			self.gameOver = True
 			self.startGame = False
 
-		sprite.groupcollide(self.bullets, self.allBlockers, True, True)
-		sprite.groupcollide(self.enemyBullets, self.allBlockers, True, True)
-		sprite.groupcollide(self.enemies, self.allBlockers, False, True)
+		#sprite.groupcollide(self.bullets, self.allBlockers, True, True)
+		#sprite.groupcollide(self.enemyBullets, self.allBlockers, True, True)
+		#sprite.groupcollide(self.enemies, self.allBlockers, False, True)
 
 	def create_new_ship(self, createShip, currentTime):
 		if createShip and (currentTime - self.shipTimer > 900):
@@ -691,7 +691,7 @@ class SpaceInvaders(object):
 					currentTime = time.get_ticks()
 					self.play_main_music(currentTime)              
 					self.screen.blit(self.background, (0,0))
-					self.allBlockers.update(self.screen)
+					#self.allBlockers.update(self.screen)
 					self.scoreText2 = Text(FONT, 20, str(self.score), GREEN, 85, 5)
 					self.scoreText.draw(self.screen)
 					self.scoreText2.draw(self.screen)
