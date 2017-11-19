@@ -336,7 +336,7 @@ class SpaceInvaders(object):
 
         self.counter = 0
         seed(42)
-        self.randNums = [randint(1, 100) for i in range(1, 10000)]
+        self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
 
     def make_blockers(self, number):
         blockerGroup = sprite.Group()
@@ -466,29 +466,32 @@ class SpaceInvaders(object):
 
     def make_enemies_shoot(self):
         columnList = []
+        rowList = []
         for enemy in self.enemies:
             columnList.append(enemy.column)
 
         columnSet = set(columnList)
         columnList = list(columnSet)
-        #shuffle(columnList)
-        column = columnList[self.randNums[self.counter] % len(columnList)]
-        enemyList = []
-        rowList = []
 
-        for enemy in self.enemies:
-            if enemy.column == column:
-                rowList.append(enemy.row)
-        #row = max(rowList)
-        row = rowList[self.randNums[self.counter] % len(rowList)]
-        self.counter += 1
-        for enemy in self.enemies:
-            if enemy.column == column and enemy.row == row:
-                if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+        # determine if we need to have an enemy shoot yet
+        if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+
+            # determine what row and column to shoot from
+            column = columnList[self.randNums[self.counter] % len(columnList)]
+            for enemy in self.enemies:
+                if enemy.column == column:
+                    rowList.append(enemy.row)
+            row = rowList[self.randNums[self.counter] % len(rowList)]
+
+            self.counter += 1
+
+            # find the enemy in that row and column and shoot from them
+            for enemy in self.enemies:
+                if enemy.column == column and enemy.row == row:
                     self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
                     self.allSprites.add(self.enemyBullets)
                     self.timer = time.get_ticks()
-                    print("col: " + str(column) + " row: " + str(row))
+                    #print("col: " + str(column) + " row: " + str(row))
 
     def calculate_score(self, row):
         scores = {0: 30,
@@ -685,9 +688,9 @@ class SpaceInvaders(object):
                         self.nextRoundText.draw(self.screen)
                         self.livesText.draw(self.screen)
                         self.livesGroup.update(self.keys)
-                        self.check_input()
+                        #self.check_input()
                         self.get_state(25)
-                        #self.get_action()
+                        self.get_action()
                     if currentTime - self.gameTimer > 3000:
                         # Move enemies closer to bottom
                         self.enemyPositionStart += 35
@@ -703,9 +706,9 @@ class SpaceInvaders(object):
                     self.scoreText.draw(self.screen)
                     self.scoreText2.draw(self.screen)
                     self.livesText.draw(self.screen)
-                    self.check_input()
+                    #self.check_input()
                     self.get_state(25)
-                    #   self.get_action()
+                    self.get_action()
                     self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
                     self.explosionsGroup.update(self.keys, currentTime)
                     self.check_collisions()
