@@ -509,7 +509,7 @@ class SpaceInvaders(object):
         score = scores[row]
         self.score += score
         return score
-    
+
     def get_state(self, factor):
         width = mth.floor(800/factor)
         height = mth.floor(600/factor)
