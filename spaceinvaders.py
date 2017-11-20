@@ -690,6 +690,13 @@ class SpaceInvaders(object):
 
             if type(spr).__name__ == 'Ship':
                 #ship is 5 times the size of a bullet, col width = 10, bullet is width 5, bullet loc center of col space. if bullet above ship, dodge accordingly
+                # used to check if logic was right
+                # print("ship center: ", spr.rect.center)
+                # print("ship rec: ", spr.rect)
+                # print("ship rect left: ", spr.rect.left)
+                # print("ship rect left: ", mth.floor(spr.rect.left/Config.widthFactor) -1)
+                # print("ship center col psotion", col)
+
                 state_array[col+2][row] = 1
                 state_array[col+1][row] = 1
                 state_array[col][row] = 1
@@ -715,7 +722,20 @@ class SpaceInvaders(object):
             if type(spr).__name__ == 'Mystery':
                 if col >= 0 and row >= 0 and col < width and row <= height:
                     print("enemy mystery sprite size: ", spr.rect)
+                    print("enemy mystery sprite center: ", spr.rect.center)
+                    print("enemy mystery sprite center: ", mth.floor(spr.rect.centery/Config.widthFactor) - 1)
+
+                    state_array[col-3][row] = 4
+                    state_array[col-2][row] = 4
+                    state_array[col-1][row] = 4
                     state_array[col][row] = 4
+                    if(col < 80):
+                        state_array[col+1][row] = 4
+                    if(col < 79):
+                        state_array[col+2][row] = 4
+                    if(col < 78):
+                        state_array[col+3][row] = 4
+
         for blocker in self.allBlockers:
             col = mth.floor(blocker.rect.center[0] / Config.widthFactor) - 1
             row = mth.floor(blocker.rect.center[1] / Config.heightFactor) - 1
