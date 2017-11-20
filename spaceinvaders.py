@@ -8,6 +8,7 @@ import sys
 import argparse
 import numpy as np
 from random import shuffle, randrange, choice, randint, seed
+from datetime import datetime
 
 #           R    G    B
 WHITE 	= (255, 255, 255)
@@ -337,6 +338,7 @@ class SpaceInvaders(object):
         self.counter = 0
         seed(42)
         self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
+        seed(datetime.utcnow())
 
     def make_blockers(self, number):
         blockerGroup = sprite.Group()
@@ -432,6 +434,7 @@ class SpaceInvaders(object):
             self.player.move_left()
         if(action == 2):
             self.player.move_right()
+
     def get_genetic_action(self):
         self.keys = key.get_pressed()
         for e in event.get():
@@ -452,6 +455,7 @@ class SpaceInvaders(object):
                 self.bullets.add(rightbullet)
                 self.allSprites.add(self.bullets)
                 self.sounds["shoot2"].play()
+
     def make_enemies(self):
         enemies = sprite.Group()
         for row in range(5):
@@ -505,6 +509,7 @@ class SpaceInvaders(object):
         score = scores[row]
         self.score += score
         return score
+    
     def get_state(self, factor):
         width = mth.floor(800/factor)
         height = mth.floor(600/factor)
