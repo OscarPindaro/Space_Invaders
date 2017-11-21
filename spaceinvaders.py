@@ -4,6 +4,7 @@
 #!/usr/bin/env python
 import math as mth
 from pygame import *
+from nn import DQNAgent
 import sys
 import argparse
 import numpy as np
@@ -289,7 +290,10 @@ class Text(object):
 
 
 class SpaceInvaders(object):
-	def __init__(self):
+	def __init__(self, agent):
+		self.agent = agent
+		self.old_state = []
+		self.action = 0
 		mixer.pre_init(44100, -16, 1, 512)
 		init()
 		self.caption = display.set_caption('Space Invaders')
@@ -304,7 +308,6 @@ class SpaceInvaders(object):
 		self.enemyPositionStart = self.enemyPositionDefault
 		# Current enemy starting position
 		self.enemyPosition = self.enemyPositionStart
-
 	def reset(self, score, lives, newGame=False):
 		self.player = Ship()
 		self.playerGroup = sprite.Group(self.player)
@@ -416,7 +419,7 @@ class SpaceInvaders(object):
 							self.bullets.add(rightbullet)
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
-	def get_action(self):
+	def get_random_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
@@ -428,11 +431,20 @@ class SpaceInvaders(object):
 			self.player.move_left()
 		if(action == 2):
 			self.player.move_right()
-	def get_genetic_action(self):
+	def get_q_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
+		self.old_state = surfarray.array2d(self.screen)
+		print(self.old_state.flatten())
+		self.action = self.agent.act(self.old_state.flatten()[np.newaxis])
+		if(self.action == 0):
+			self.shoot()
+		if(self.action == 1):
+			self.player.move_left()
+		if(self.action == 2):
+			self.player.move_right()
 
 	def shoot(self):
 		if len(self.bullets) == 0 and self.shipAlive:
@@ -496,6 +508,7 @@ class SpaceInvaders(object):
 		self.score += score
 		return score
 	def get_state(self, factor):
+		self.gameOver = False
 		width = mth.floor(800/factor)
 		height = mth.floor(600/factor)
 		state_array = np.zeros([width,height],dtype=np.int)
@@ -680,7 +693,7 @@ class SpaceInvaders(object):
 						self.livesGroup.update(self.keys)
 						# self.check_input()
 						self.get_state(25)
-						self.get_action()
+						self.get_q_action()
 					if currentTime - self.gameTimer > 3000:
 						# Move enemies closer to bottom
 						self.enemyPositionStart += 35
@@ -698,10 +711,15 @@ class SpaceInvaders(object):
 					self.livesText.draw(self.screen)
 					# self.check_input()
 					self.get_state(25)
-					self.get_action()
+					self.get_q_action()
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
 					self.explosionsGroup.update(self.keys, currentTime)
 					self.check_collisions()
+					self.reward = self.score
+					if self.gameOver == True:
+    						self.reward = -10
+					print(self.reward)
+					self.agent.remember(self.old_state.flatten(),self.action, self.reward, surfarray.array2d(self.screen).flatten(), self.gameOver)
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
 
@@ -721,11 +739,10 @@ class SpaceInvaders(object):
 			self.clock.tick(60)
 		print(scoreList)
 
-				
-
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-i','--iterations',type=int, required=True)
 	args = parser.parse_args()
-	game = SpaceInvaders()
+	agent = DQNAgent(800*600, 3)
+	game = SpaceInvaders(agent)
 	game.main(args.iterations)
