@@ -7,8 +7,10 @@ from pygame import *
 import sys
 import argparse
 import numpy as np
-from random import shuffle, randrange, choice, randint, seed
+from random import shuffle, randrange, choice, randint, seed, random
 from datetime import datetime
+import json
+import os
 
 #           R    G    B
 WHITE 	= (255, 255, 255)
@@ -340,6 +342,10 @@ class SpaceInvaders(object):
         self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
         seed(datetime.utcnow())
 
+        self.needToSave = True
+        self.genomeStep = 0
+        self.genome = self.generate_population(100, 1)
+
     def make_blockers(self, number):
         blockerGroup = sprite.Group()
         for row in range(4):
@@ -436,10 +442,53 @@ class SpaceInvaders(object):
             self.player.move_right()
 
     def get_genetic_action(self):
-        self.keys = key.get_pressed()
-        for e in event.get():
-            if e.type == QUIT:
-                sys.exit()
+        if self.genomeStep >= len(self.genome[0]):
+            self.genomeStep = 0
+
+        action = self.genome[0][self.genomeStep]
+        self.genomeStep += 1
+
+        if action == 0:
+            self.shoot()
+        elif action == 1:
+            self.player.move_left()
+        elif action == 2:
+            self.player.move_right()
+
+    def generate_population(self, move_count, population_size):
+        return [[randint(0, 2) for i in range(0, move_count)]
+                for j in range(0, population_size)]
+
+    def generate_skewed_random_action(self):
+        if random() <= 0.5: # skewed towards picking the shoot action
+            return 0
+        else:
+            return randint(1, 2)
+
+    def load_genomes(self):
+        with open("genome.json", "r") as infile:
+            return json.load(infile)
+
+    def save_genome_with_score(self):
+
+        if os.path.isfile("./genome.json"):
+            data = self.load_genomes()
+        else:
+            data = []
+
+        genome = dict([('score', self.score), ('genome', self.genome[0])])
+        data.append(genome)
+
+        data = sorted(data, key=lambda k: k['score'], reverse=True)
+
+        if os.path.exists("./genome.json"):
+            os.remove("./genome.json")
+
+        with open("genome.json", "wt") as outfile:
+            outfile.seek(0)
+            json.dump(data, outfile, indent=2)
+
+        self.needToSave = False
 
     def shoot(self):
         if len(self.bullets) == 0 and self.shipAlive:
@@ -648,17 +697,7 @@ class SpaceInvaders(object):
             self.shipAlive = True
 
     def create_game_over(self, currentTime):
-        self.screen.blit(self.background, (0,0))
-        if currentTime - self.timer < 750:
-            self.gameOverText.draw(self.screen)
-        if currentTime - self.timer > 750 and currentTime - self.timer < 1500:
-            self.screen.blit(self.background, (0,0))
-        if currentTime - self.timer > 1500 and currentTime - self.timer < 2250:
-            self.gameOverText.draw(self.screen)
-        if currentTime - self.timer > 2250 and currentTime - self.timer < 2750:
-            self.screen.blit(self.background, (0,0))
-        if currentTime - self.timer > 3000:
-            self.mainScreen = True
+        self.mainScreen = True
 
         for e in event.get():
             if e.type == QUIT:
@@ -695,7 +734,8 @@ class SpaceInvaders(object):
                         self.livesGroup.update(self.keys)
                         #self.check_input()
                         self.get_state(25)
-                        self.get_action()
+                        #self.get_action()
+                        self.get_genetic_action()
                     if currentTime - self.gameTimer > 3000:
                         # Move enemies closer to bottom
                         self.enemyPositionStart += 35
@@ -713,7 +753,8 @@ class SpaceInvaders(object):
                     self.livesText.draw(self.screen)
                     #self.check_input()
                     self.get_state(25)
-                    self.get_action()
+                    #self.get_action()
+                    self.get_genetic_action()
                     self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
                     self.explosionsGroup.update(self.keys, currentTime)
                     self.check_collisions()
@@ -724,6 +765,9 @@ class SpaceInvaders(object):
                         self.make_enemies_shoot()
 
             elif self.gameOver:
+                print("I'm in game over?")
+                if (self.needToSave):
+                    self.save_genome_with_score()
                 currentTime = time.get_ticks()
                 # Reset enemy starting position
                 self.enemyPositionStart = self.enemyPositionDefault
@@ -735,8 +779,6 @@ class SpaceInvaders(object):
             display.update()
             self.clock.tick(60)
         print(scoreList)
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
