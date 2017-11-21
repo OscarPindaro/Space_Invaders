@@ -342,7 +342,6 @@ class SpaceInvaders(object):
         self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
         seed(datetime.utcnow())
 
-        self.needToSave = True
         self.genomeStep = 0
         self.genome = self.generate_population(100, 1)
 
@@ -478,17 +477,10 @@ class SpaceInvaders(object):
 
         genome = dict([('score', self.score), ('genome', self.genome[0])])
         data.append(genome)
-
         data = sorted(data, key=lambda k: k['score'], reverse=True)
 
-        if os.path.exists("./genome.json"):
-            os.remove("./genome.json")
-
-        with open("genome.json", "wt") as outfile:
-            outfile.seek(0)
+        with open("genome.json", "w") as outfile:
             json.dump(data, outfile, indent=2)
-
-        self.needToSave = False
 
     def shoot(self):
         if len(self.bullets) == 0 and self.shipAlive:
@@ -765,9 +757,8 @@ class SpaceInvaders(object):
                         self.make_enemies_shoot()
 
             elif self.gameOver:
-                print("I'm in game over?")
-                if (self.needToSave):
-                    self.save_genome_with_score()
+                print("I'm in game over!")
+                self.save_genome_with_score()
                 currentTime = time.get_ticks()
                 # Reset enemy starting position
                 self.enemyPositionStart = self.enemyPositionDefault
