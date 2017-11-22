@@ -186,6 +186,7 @@ class Blocker(sprite.Sprite):
 		game.screen.blit(self.image, self.rect)
 
 
+# noinspection PyRedundantParentheses,PyRedundantParentheses
 class Mystery(sprite.Sprite):
 	def __init__(self):
 		sprite.Sprite.__init__(self)
@@ -292,6 +293,7 @@ class Text(object):
 		surface.blit(self.surface, self.rect)
 
 
+# noinspection PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses,PyRedundantParentheses
 class SpaceInvaders(object):
 	def __init__(self):
 		mixer.pre_init(44100, -16, 1, 512)
@@ -423,61 +425,213 @@ class SpaceInvaders(object):
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
 
-	##TODO: make factor global variable
-	def get_ships_immediate_proximity(self, x, y, stateArray):
-		print("")
-		print("")
-		# colLeft = []
-		# colLeftLeft = []
-		# colRight = []
-		# colRightRight = []
+	# check if enemy to left
+	def enemy_bullet_is_left(self, proximityStates, shipX, shipY):
+		if shipY > 0:
+			if proximityStates[shipX - 4][shipY - 1] == 3 or proximityStates[shipX - 3][shipY - 1] == 3 or \
+							proximityStates[shipX - 2][shipY - 1] == 3 or proximityStates[shipX - 1][shipY - 1] == 3:
+				return True
+		return False
+
+	# checks the row above the enemy and checks to see if a bullet is within x coordinates of the ship -- this allows us to give enough time to move
+	def enemey_bullet_is_right(self, proximityStates, shipX, shipY):
+		if shipY < 23:
+			if proximityStates[shipX - 4][shipY + 1] == 3 or proximityStates[shipX - 3][shipY + 1] == 3 or \
+							proximityStates[shipX - 2][shipY + 1] == 3 or proximityStates[shipX - 1][shipY + 1] == 3:
+				return True
+		return False
+
+	#
+	def findClosetBullet(self, rowToSearch):
+		# print("calling find closestBUllet, rowToSearch") #TODO: remove after testing
+		for i in reversed(rowToSearch):
+			if rowToSearch[i] == 3:
+				return i
+		return 0
+
+	# returns the index representing the part of ship vulnerable that has the closet bullets
+	def highestPriorityBullet(self, bulletArray):
+		pos = "none"
+		lowestValue = 10000  # place holder
+		for i in range(0, len(bulletArray)):
+			if bulletArray[i] < lowestValue and bulletArray[i] != 0:
+				lowestValue = bulletArray[i]
+				pos = i
+		return pos
+
+	##Strategy: prioritize dodging or killing bullets within 3 * 50 px of any part of the ship
+	## otherwise shoot and hope target is hit -- next iteration will try to be strategic about hitting enemies.
+	## action map:
+	#            shoot: 0
+	#            move left: 1
+	#            move right: 2
+	@property
+	def utility(self):
+
+		bulletFound = False
+
+		shipCenterRow = mth.floor(self.player.rect.center[0] / Config.heightFactor) - 1  # row?
+		shipCenterCol = mth.floor(self.player.rect.center[1] / Config.widthFactor) - 1
+
+		text = Text(FONT, 20, str("Ship Coord - col: ") + str(shipCenterRow) + ',row:' + str(shipCenterCol), GREEN, 135,
+					5)  # TODO: remove? I think its fun to see the ships current location.
+		text.draw(self.screen)
+
+		##Get state spaces
+		stateArray = self.get_state()
+
+		# array that holds position of bullet for each vulnerability on ship . To determine which action to prioritize depending on which bullet is closer    - [leftTip][leftCenter][center][rightRight][rightTip]
+		enemyBulletsPositions = [0 for x in range(5)]
+
+		#bullet is approching very edge of left wing tip
+		leftWingTipEdge = stateArray[(shipCenterRow - 3), :]
+		if leftWingTipEdge.__contains__(3):
+			enemyBulletsPositions[0] = self.findClosetBullet(leftWingTipEdge, shipCenterCol)
+
+		# enemy bullet is about to hit the tip of the ship's left wing -- move ship right to dodge
+		leftWingTip = stateArray[(shipCenterRow - 2), :]
+		if leftWingTip.__contains__(3):
+			enemyBulletsPositions[0] = self.findClosetBullet(leftWingTip, shipCenterCol)
+
+		# bullet heading towards left wing - move ship left to center ship with enemy bullet and counter bullet next round
+		leftWingCen = stateArray[shipCenterRow - 1, :]
+		if leftWingCen.__contains__(3):
+			enemyBulletsPositions[1] = self.findClosetBullet(leftWingCen, shipCenterCol)
+
+		# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
+		colCenter = stateArray[shipCenterRow, :]
+		if colCenter.__contains__(3):
+			enemyBulletsPositions[2] = self.findClosetBullet(colCenter, shipCenterCol)
+
+		# bullet is approaching right wing -- move ship right to counter bullet next round
+		rightWingCen = stateArray[shipCenterRow + 1, :]
+		if rightWingCen.__contains__(3):
+			enemyBulletsPositions[3] = self.findClosetBullet(rightWingCen, shipCenterCol)
+
+		# bullet is approaching tip of the ship's right wing -- move ship left to dodge
+		rightWingTip = stateArray[shipCenterRow + 2, :]
+		if rightWingTip.__contains__(3):
+			enemyBulletsPositions[4] = self.findClosetBullet(rightWingTip, shipCenterCol)
+
+		print(leftWingTipEdge)
+		print(leftWingTip)  ##TODO: remove after testing
+		print(leftWingCen)
+		print(colCenter)  # TODO: remove after testing
+		print(rightWingCen)
+		print(rightWingTip)
+
+		print("enemy bullet positions", enemyBulletsPositions)
+		# find highest prority
+
+		highestPriority = self.highestPriorityBullet(enemyBulletsPositions)
+		if highestPriority != "none":
+			if highestPriority == 0:					#bullet is approching very edge of left wing tip
+				return 0  # TODO: add logic
+			elif highestPriority == 1:
+				return 0  # TODO: add logic
+			elif highestPriority == 2:					# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
+				return 0
+			elif highestPriority == 3:					# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
+				return 0  # TODO: add logic
+			elif highestPriority == 4:					# bullet is approaching right wing -- move ship right to counter bullet next round
+				return 0  # TODO: add logic
+			else:										# bullet is approaching tip of the ship's right wing -- move ship left to dodge
+				return 0  # TODO: add logic
+		else:
+			return 0  # TODO add better logic
+		# if pos returned has
 
 
-		if(y > 1):
-			colLeftLeft = stateArray[:, x - 1]
-			print(colLeftLeft)
 
-		if(y > 0):
-			colLeft = stateArray[:, x-1]
-			print(colLeft)
+		# if rightWingCen[shipCenterCol - 3] == 3 or rightWingCen[
+		# 			shipCenterCol - 2] == 3:  # colLeft[shipCenterCol - 1] does not leave enough time to counter bullet, no hope left :(
 
-		colCurr = stateArray[:, x]
-		print(colCurr)
+		#	if leftWingTip[shipCenterCol - 3] == 3 or leftWingTip[shipCenterCol - 2] == 3 or leftWingTip[ shipCenterCol - 1] == 3:
+		#	return 2  # move right to dodge if no enemy
 
-		if(y < 31):
-			colRight = stateArray[:, x +1]
-			print(colRight)
+		# if leftWingCen[shipCenterCol - 2] == 3 or leftWingCen[
+		# 			shipCenterCol - 2] == 3:  # colLeft[shipCenterCol - 1] does not leave enough time to counter bullet, no hope left
 
-		if (y < 30):
-			colRightRight = stateArray[:, x + 2]
-			print(colRightRight)
 
-		# get column directly above -- x = shipPosX, y = 0-20
-		# stateArray.
+		# address the bullet closet to
+
+		# if rightWingTip[shipCenterCol - 2] == 3 or rightWingTip[
+		# 			shipCenterCol - 2] == 3:  # colRightRight[shipCenterCol - 1] does not leave enough time to counter bullet, no hope left :(
+		#	return 1;  # move ship left to dodge
+
+		# return 2  # move right to counter next round
+
+
+
+
+
+
+
+		# if no bullets to worry about -- pick best move, if enemy nearby -- and coming direction of ship -- shoot, else move
+
+		# shoot in every other situation
+		return 0;
+
+		# noinspection PyPep8
+		#  #if bullet is the directly above us, check left and right and move to best position to continue to
+		#  if proximityStates[shipX-3][shipY] == 3 or proximityStates[shipX-2][shipY] == 3 or proximityStates[shipX-1][shipY] == 3:
+		#
+		#     # if self.enemey_bullet_is_right(proximityStates, shipX, shipY):
+		#     #      return 1  #move left
+		#     #  if self.enemy_bullet_is_left(proximityStates, shipX, shipY):
+		#     #      return 2  #move right
+		#      return 0    #dodging puts as in equally bad state. shoot and hope we kill the bullet in time.
+		#
+		#  #No bullets are in the same row as us but we need check to see if the row above or below us contains bullets because it will kill us  -- side effect of how we represented state space.
+		# #this is because bullets are 1/3 of size of ship. can adjust this if we converted the array to be n * the width of the
+		#  if self.enemey_bullet_is_right(proximityStates, shipX, shipY):
+		#      return 1  # move left
+		#
+		#  if self.enemy_bullet_is_left(proximityStates, shipX, shipY):
+		#      return 2  # move right
+
+		return 0  # no need to dodge, shoot and hope we hit an invader.
+
+	# add logic to check if enemy is in row above and if not, shoot and move? shooting enemies if chance
+
+	#
+	#     print("first conditiaional ship to Right:", proximityStates[shipX-1][shipY-1], "row:", proximityStates[shipY-1,:])
+	#
+	#     if proximityStates[shipX-1][shipY-1] == 3:
+	#         print("bullet will hit left side of ship. move right? grabbing row: ", proximityStates[shipY-1,:])
+	#         return 2
+	#
+	# if shipX > 0 and shipY < 23:
+	#     print("first conditiaional ship to left:", proximityStates[shipX-1][shipY-1])
+	#     if proximityStates[shipX-1][shipY+1] == 3:
+	#         print("bullet will hit right side of ship. move left? grabbing row: ", proximityStates[shipY-1,:])
+	#         return 1
+	#
+	# return 0;
+	# if proximityStates[shipX-1][shipY-1] == 1:
+	#     print("bullet will hit left side of ship. move right? grabbing row: ", proximityStates[shipY-1,:])
+	#     return 2
+
+	# if bullet in same row as ship, row to the left, or right to the right --- get out of dodge, enemy bullet will kill you. move left or move right.
+
+
+	##TODO: if bullet in ships vision -- move left or right depending on which has higher potential to get score.
 
 
 	##expand to get list that contains ship coords and array of nearyby sprites gride
 	def get_action(self):
-
-		state_array = self.get_state(Config.factor)
-		shipX = mth.floor(self.player.rect.center[0] / Config.factor) - 1
-		shipY = mth.floor(self.player.rect.center[1] / Config.factor) - 1
-		self.get_ships_immediate_proximity(shipX, shipY, state_array)
-
-		spriteAtCoord = state_array[shipX][shipY]
-		if spriteAtCoord == 1:
-			text = Text(FONT, 20, str("Ship Coord: ") + str(shipX) + ',' + str(shipY), GREEN, 135, 5)
-			text.draw(self.screen)
-
-		# print("test of state array:")
-		# print(state_array)
-		# shipLocation = state_array.w
+		print("ship x original ", self.player.rect.center[0])
+		print("size of ship ", self.player.rect)
 
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
-		action = randint(0, 2)
+
+		# action = 0
+		action = self.utility
+
+		# randint(0, 2)
 		if (action == 0):
 			self.shoot()
 		if (action == 1):
@@ -554,32 +708,60 @@ class SpaceInvaders(object):
 		self.score += score
 		return score
 
-	def get_state(self, factor):
-		width = mth.floor(800 / factor)
-		height = mth.floor(600 / factor)
-		state_array = np.zeros([width, height], dtype=np.int)
+	# ship size      50, 48          <width, height>
+	# enemy ship size 40,35
+	# ship bullet sprite size:  <rect(398, 515, 5, 15)>
+	#
+	# TODO: either make a copy or ask permision to change if this works
+	def get_state(self):
+		height = mth.floor(800 / Config.heightFactor)  # 800 /10 = 80 rows
+		width = mth.floor(600 / Config.widthFactor)  # 600 / 50 = 12 columns
+		state_array = np.zeros([height, width], dtype=np.int)
 		for spr in self.allSprites.sprites():
-			x = mth.floor(spr.rect.center[0] / factor) - 1
-			y = mth.floor(spr.rect.center[1] / factor) - 1
+			row = mth.floor(spr.rect.center[0] / Config.heightFactor) - 1
+			col = mth.floor(spr.rect.center[1] / Config.widthFactor) - 1
+
 			if type(spr).__name__ == 'Ship':
-				state_array[x][y] = 1
+				state_array[row + 2][col] = 1  # TODO: keep? need to test
+				state_array[row + 1][col] = 1
+				state_array[row][col] = 1
+				state_array[row - 1][col] = 1
+				state_array[row - 2][col] = 1
+				state_array[row - 3][col] = 1  # keep for sure -- do not even think about deleting
+
 			if type(spr).__name__ == 'Enemy':
-				state_array[x][y] = 2
+				state_array[row - 2][col] = 2
+				state_array[row - 1][col] = 2
+				state_array[row][col] = 2
+				state_array[row + 1][col] = 2
 			if type(spr).__name__ == 'Bullet':
 				if (spr.direction == 1):
-					state_array[x][y] = 3
+					state_array[row][col] = 3
 				else:
-					state_array[x][y] = 6
+					state_array[row][col] = 6
 			if type(spr).__name__ == 'Mystery':
-				if x >= 0 and y >= 0 and x < width and y <= height:
-					state_array[x][y] = 4
+				if row >= 0 and col >= 0 and row < height and col <= width:
+					state_array[row - 3][col] = 4
+					state_array[row - 2][col] = 4
+					state_array[row - 1][col] = 4
+					state_array[row][col] = 4
+					if (row < 80):
+						state_array[row + 1][col] = 4
+					if (row < 79):
+						state_array[row + 2][col] = 4
+					if (row < 78):
+						state_array[row + 3][col] = 4
+
 		for blocker in self.allBlockers:
-			x = mth.floor(blocker.rect.center[0] / factor) - 1
-			y = mth.floor(blocker.rect.center[1] / factor) - 1
-			state_array[x][y] = 5
+			row = mth.floor(blocker.rect.center[0] / Config.heightFactor) - 1
+			col = mth.floor(blocker.rect.center[1] / Config.widthFactor) - 1
+			state_array[row][col] = 5
+		# TODO: put back in if desired?
 		# np.savetxt('state.txt', state_array, fmt='%i')
-		# print(np.transpose(state_array))
-		return np.transpose(state_array) #TODO: remove transpose after testing
+		print(state_array)
+		# print(state_array)
+
+		return state_array  # TODO: remove transpose after testing
 
 	def create_main_menu(self):
 		self.enemy1 = IMAGES["enemy3_1"]
@@ -611,6 +793,8 @@ class SpaceInvaders(object):
 				enemy.moveTime = 200
 
 	def check_collisions(self):
+		print("Checking colliion -- not indicative of a real collision")
+		self.get_state()
 		collidedict = sprite.groupcollide(self.bullets, self.enemyBullets, True, False)
 		if collidedict:
 			for value in collidedict.values():
@@ -655,6 +839,9 @@ class SpaceInvaders(object):
 		if bulletsdict:
 			for value in bulletsdict.values():
 				for playerShip in value:
+					# TODO: remove after testing
+					print("\n\n collision!")
+					self.get_state()
 					if self.lives == 3:
 						self.lives -= 1
 						self.livesGroup.remove(self.life3)
@@ -761,10 +948,25 @@ class SpaceInvaders(object):
 					self.scoreText2.draw(self.screen)
 					self.livesText.draw(self.screen)
 					# self.check_input()
-					# self.get_state(25)
+					#   self.get_state()
+
+					# print state map before agent makes move
 					self.get_action()
+
+					# after agent makes move
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
+
+					# after sprites make move
+					# TODO: investigate speed of bullets  and enemies move. might want to make it easier to predict next states by making all the sprites update only 1 frame before
+
 					self.explosionsGroup.update(self.keys, currentTime)
+
+					# before colision?
+					#	print("printing before check_collisions")
+					#	print("game state: ")
+					#  self.get_state(Config.factor)
+					#	print("reduced state")
+					#	self.get_ships_immediate_proximity()
 					self.check_collisions()
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
@@ -778,6 +980,7 @@ class SpaceInvaders(object):
 				self.enemyPositionStart = self.enemyPositionDefault
 				self.create_game_over(currentTime)
 				scoreList.add((i, self.score))
+
 				if (i >= it):
 					break
 
