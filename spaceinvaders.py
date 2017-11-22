@@ -4,7 +4,7 @@
 #!/usr/bin/env python
 import math as mth
 from pygame import *
-from nn import DQNAgent
+from ddqn import DQNAgent
 import sys
 import argparse
 import numpy as np
@@ -290,7 +290,8 @@ class Text(object):
 
 
 class SpaceInvaders(object):
-	def __init__(self, agent):
+	def __init__(self, agent, batch_size=50):
+		self.batch_size = batch_size
 		self.agent = agent
 		self.old_state = []
 		self.action = 0
@@ -431,20 +432,22 @@ class SpaceInvaders(object):
 			self.player.move_left()
 		if(action == 2):
 			self.player.move_right()
+	
 	def get_q_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
-		self.old_state = surfarray.array2d(self.screen)
+		self.old_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 		print(self.old_state.flatten())
-		self.action = self.agent.act(self.old_state.flatten()[np.newaxis])
+		self.action = self.agent.act(self.old_state)
 		if(self.action == 0):
 			self.shoot()
 		if(self.action == 1):
 			self.player.move_left()
 		if(self.action == 2):
 			self.player.move_right()
+		#else don't move
 
 	def shoot(self):
 		if len(self.bullets) == 0 and self.shipAlive:
@@ -711,17 +714,23 @@ class SpaceInvaders(object):
 					self.livesText.draw(self.screen)
 					# self.check_input()
 					self.get_state(25)
+
+					#model prediction
 					self.get_q_action()
+
+					#game update
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
 					self.explosionsGroup.update(self.keys, currentTime)
 					self.check_collisions()
-					self.reward = self.score
-					if self.gameOver == True:
-    						self.reward = -10
-					print(self.reward)
-					self.agent.remember(self.old_state.flatten(),self.action, self.reward, surfarray.array2d(self.screen).flatten(), self.gameOver)
+
+					#model save
+					self.reward = self.score if not self.gameOver else -10
+					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
+					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
+
+					print(self.reward)
 
 					if len(self.enemies) > 0:
 						self.make_enemies_shoot()
@@ -734,6 +743,11 @@ class SpaceInvaders(object):
 				scoreList.add((i, self.score))
 				if(i >= it):
 					break
+
+				#reinforcement learning
+				if len(self.agent.memory) > self.batch_size:
+					print('applying reinforcement')
+					self.agent.replay(self.batch_size)
 				
 			display.update()
 			self.clock.tick(60)
@@ -743,6 +757,6 @@ if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-i','--iterations',type=int, required=True)
 	args = parser.parse_args()
-	agent = DQNAgent(800*600, 3)
-	game = SpaceInvaders(agent)
+	agent = DQNAgent(800*600, 4)
+	game = SpaceInvaders(agent, batch_size=100)
 	game.main(args.iterations)
