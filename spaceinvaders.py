@@ -6,6 +6,7 @@ import math as mth
 from pygame import *
 from nn import DQNAgent
 import sys
+import os
 import argparse
 import numpy as np
 from random import shuffle, randrange, choice, randint
@@ -17,6 +18,7 @@ YELLOW 	= (241, 255, 0)
 BLUE 	= (80, 255, 239)
 PURPLE 	= (203, 0, 255)
 RED 	= (237, 28, 36)
+BATCH_SIZE = 32
 
 SCREEN 		= display.set_mode((800,600))
 FONT = "fonts/space_invaders.ttf"
@@ -437,7 +439,7 @@ class SpaceInvaders(object):
 			if e.type == QUIT:
 				sys.exit()
 		self.old_state = surfarray.array2d(self.screen)
-		print(self.old_state.flatten())
+		self.old_state.flatten()
 		self.action = self.agent.act(self.old_state.flatten()[np.newaxis])
 		if(self.action == 0):
 			self.shoot()
@@ -720,6 +722,8 @@ class SpaceInvaders(object):
     						self.reward = -10
 					print(self.reward)
 					self.agent.remember(self.old_state.flatten(),self.action, self.reward, surfarray.array2d(self.screen).flatten(), self.gameOver)
+					if(len(self.agent.memory) > BATCH_SIZE):
+						self.agent.replay(BATCH_SIZE)
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
 
@@ -733,6 +737,7 @@ class SpaceInvaders(object):
 				self.create_game_over(currentTime)
 				scoreList.add((i, self.score))
 				if(i >= it):
+					self.agent.save('model.h5')
 					break
 				
 			display.update()
@@ -744,5 +749,7 @@ if __name__ == '__main__':
 	parser.add_argument('-i','--iterations',type=int, required=True)
 	args = parser.parse_args()
 	agent = DQNAgent(800*600, 3)
+	# if(os.path.exists('model.h5')):
+	# 	agent.load('model.h5')
 	game = SpaceInvaders(agent)
 	game.main(args.iterations)
