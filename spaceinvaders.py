@@ -311,6 +311,9 @@ class SpaceInvaders(object):
 		# Current enemy starting position
 		self.enemyPosition = self.enemyPositionStart
 
+		# STORE Enemy sprite locations -- update each time get_state is updated.
+		self.enemySpritesArray = []  # TODO: fix -- working on
+
 	def reset(self, score, lives, newGame=False):
 		self.player = Ship()
 		self.playerGroup = sprite.Group(self.player)
@@ -441,23 +444,78 @@ class SpaceInvaders(object):
 				return True
 		return False
 
-	#
+	# player ship is divided into six sections spread across six rows. This method takes a ship row and checks to see if a bullet is coming towards that part of the ship.
+	# if no bullets are found, a value of 10,000 is returned to indicate that no bullets are present
+	# otherwise, it will return the col# the bullet is in, a higher #  returned indicates a higher threat to the ship because it means the bullet is closest to it.
 	def findClosetBullet(self, rowToSearch):
-		# print("calling find closestBUllet, rowToSearch") #TODO: remove after testing
-		for i in reversed(rowToSearch):
+		print("calling find closestBUllet: ", rowToSearch)  # TODO: remove after testing
+		for i in range((len(rowToSearch) - 1), 0,
+					   -1):  # Starts searching for bullet from col 9 to zero, returning the index of the bullet closest to the ship.
+			if rowToSearch[i] == 5:
+				break
 			if rowToSearch[i] == 3:
 				return i
-		return 0
+		return Config.inf
 
 	# returns the index representing the part of ship vulnerable that has the closet bullets
 	def highestPriorityBullet(self, bulletArray):
-		pos = "none"
-		lowestValue = 10000  # place holder
-		for i in range(0, len(bulletArray)):
-			if bulletArray[i] < lowestValue and bulletArray[i] != 0:
-				lowestValue = bulletArray[i]
-				pos = i
+		# pos = "none"
+		pos = []
+		highestvalue = -99  # place holder    --- TODO: what if multiple places have bullets in same position?
+		for i in range(0, len(bulletArray) - 1):  # dont want to include col row is in
+			if bulletArray[i] != Config.inf and bulletArray[i] >= highestvalue:
+				highestvalue = bulletArray[i]
+				pos.append(
+					i)  # bullet array has length six - 1 position for each of the rows used to reprsent the ship. if 4 is in the list, it means that the ships center is the most vulnerable part of the ship.
+
+		# no bullets approaching any parts of the ship
+		if len(pos) == 0:
+			return "none"
+
+		# two or more parts of the ship are equally vulnerable to being hit by an enemy bullet  -- TODO: create logic to determine which part of the ship should be prioritized -- might want to check nearby rows to help make decision
+		if len(pos) > 1:
+			return 4  # placeholder - prioritze ship rcenter
+		# TODO: add logic to figure out which bullet to prioritize
 		return pos
+
+	# TODO: rather then
+	# check if enemies are x rows above- or x rows below -- if so -- check if within shooting distance -- if  not - move towards it.
+	def playerAndEnemyPolicy(self, stateArray):
+
+		enemysAbove = False
+		enemysBelow = True
+
+		shipCenterRow = self.player.rect.center[0]
+
+	#	print("test of enemeyArray", self.enemySpritesArray)
+	# for enemy in self.enemySpritesArray:
+	# 	print("enemy location: ", enemy.rect)
+	# for spr in self.allSprites.sprites():
+	# 	if type(spr).__name__ == 'Enemy':
+
+
+	# get enemy ships sprites: find location
+
+	# check if any are within x positions heading towards the ship  -- if so return 0
+
+	# if ships are moving away from the ship
+
+
+	# #if enemy is 10 rows above ship and is moving in the direction of the ship
+	# for row in range(0, shipCenterRow):
+	# 	if stateArray[row] == 2:
+	# 		if sta
+	#
+	# #checking if enemies are below ship
+	# for row in range(shipCenterRow, 80):
+	# 	if stateArray[row] == 2:
+
+
+	# enemysAbove = True
+
+	# if enemy is 10 rows below ship
+
+
 
 	##Strategy: prioritize dodging or killing bullets within 3 * 50 px of any part of the ship
 	## otherwise shoot and hope target is hit -- next iteration will try to be strategic about hitting enemies.
@@ -469,7 +527,7 @@ class SpaceInvaders(object):
 	def utility(self):
 
 		bulletFound = False
-
+		shipLeft = mth.floor(self.player.rect.left / Config.heightFactor) - 1  # row?
 		shipCenterRow = mth.floor(self.player.rect.center[0] / Config.heightFactor) - 1  # row?
 		shipCenterCol = mth.floor(self.player.rect.center[1] / Config.widthFactor) - 1
 
@@ -479,65 +537,88 @@ class SpaceInvaders(object):
 
 		##Get state spaces
 		stateArray = self.get_state()
+		self.playerAndEnemyPolicy(stateArray)
 
+		# TODO: make constant
 		# array that holds position of bullet for each vulnerability on ship . To determine which action to prioritize depending on which bullet is closer    - [leftTip][leftCenter][center][rightRight][rightTip]
-		enemyBulletsPositions = [0 for x in range(5)]
+		enemyBulletsPositions = [Config.inf for x in range(7)]
 
-		#bullet is approching very edge of left wing tip
-		leftWingTipEdge = stateArray[(shipCenterRow - 3), :]
+		# bullet is approching very edge of left wing tip
+		leftWingTipEdge = stateArray[(shipLeft), :]
 		if leftWingTipEdge.__contains__(3):
-			enemyBulletsPositions[0] = self.findClosetBullet(leftWingTipEdge, shipCenterCol)
+			enemyBulletsPositions[0] = self.findClosetBullet(leftWingTipEdge)
 
 		# enemy bullet is about to hit the tip of the ship's left wing -- move ship right to dodge
-		leftWingTip = stateArray[(shipCenterRow - 2), :]
-		if leftWingTip.__contains__(3):
-			enemyBulletsPositions[0] = self.findClosetBullet(leftWingTip, shipCenterCol)
+		leftWingCenter = stateArray[(shipLeft + 1), :]
+		if leftWingCenter.__contains__(3):
+			enemyBulletsPositions[0] = self.findClosetBullet(leftWingCenter)
+
 
 		# bullet heading towards left wing - move ship left to center ship with enemy bullet and counter bullet next round
-		leftWingCen = stateArray[shipCenterRow - 1, :]
-		if leftWingCen.__contains__(3):
-			enemyBulletsPositions[1] = self.findClosetBullet(leftWingCen, shipCenterCol)
+		shipCenter = stateArray[shipLeft + 2, :]
+		if shipCenter.__contains__(3):
+			enemyBulletsPositions[1] = self.findClosetBullet(shipCenter)
 
 		# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
-		colCenter = stateArray[shipCenterRow, :]
-		if colCenter.__contains__(3):
-			enemyBulletsPositions[2] = self.findClosetBullet(colCenter, shipCenterCol)
+		rightWingCenter = stateArray[shipLeft + 3, :]
+		if rightWingCenter.__contains__(3):
+			enemyBulletsPositions[2] = self.findClosetBullet(rightWingCenter)
 
 		# bullet is approaching right wing -- move ship right to counter bullet next round
-		rightWingCen = stateArray[shipCenterRow + 1, :]
-		if rightWingCen.__contains__(3):
-			enemyBulletsPositions[3] = self.findClosetBullet(rightWingCen, shipCenterCol)
-
-		# bullet is approaching tip of the ship's right wing -- move ship left to dodge
-		rightWingTip = stateArray[shipCenterRow + 2, :]
+		rightWingTip = stateArray[shipLeft + 4, :]
 		if rightWingTip.__contains__(3):
-			enemyBulletsPositions[4] = self.findClosetBullet(rightWingTip, shipCenterCol)
+			enemyBulletsPositions[3] = self.findClosetBullet(rightWingTip)
+		#
+		# # bullet is approaching tip of the ship's right wing -- move ship left to dodge
+		# rightWingTip = stateArray[shipLeft + 5, :]
+		# #rightWingTip = stateArray[shipCenterRow + 2, :]
+		# if rightWingTip.__contains__(3):
+		# 	enemyBulletsPositions[4] = self.findClosetBullet(rightWingTip)
+		#
+
 
 		print(leftWingTipEdge)
-		print(leftWingTip)  ##TODO: remove after testing
-		print(leftWingCen)
-		print(colCenter)  # TODO: remove after testing
-		print(rightWingCen)
+		print(leftWingCenter)  ##TODO: remove after testing
+		print(shipCenter)
+		print(rightWingCenter)  # TODO: remove after testing
+		print(rightWingTip)
 		print(rightWingTip)
 
 		print("enemy bullet positions", enemyBulletsPositions)
 		# find highest prority
 
+
+		# TODO: combine if logic
+		# returns an empty array if no bullets are coming towards ship
 		highestPriority = self.highestPriorityBullet(enemyBulletsPositions)
+		print("highestPrioirty bullet: ", highestPriority)
 		if highestPriority != "none":
-			if highestPriority == 0:					#bullet is approching very edge of left wing tip
+			if highestPriority == 0:  # bullet is approching very edge of left wing tip  --- move ship right to dodge - provided this does not move in line of bullet
+				if shipLeft > 0 and stateArray[shipLeft - 1][shipCenterCol] != 3:
+				# if (shipCenterRow - 3) > 0 and stateArray[shipCenterRow - 4][shipCenterCol] != 3 and stateArray[shipCenterRow - 4][shipCenterCol - 1] != 3:  # TODO: maybe check if col -2 and col - 3 also -- if we move right, we want to make sure we have plenty of time to get out of the way
+					return 2  # move rightWingTip
+				return 1  # move ship left and hope that we have enough time to counter by moving left - - probably doomed
+			elif highestPriority == 1:  # bullet is
+				return 2  # TODO: add logic
+			elif highestPriority == 2:  # bullet approaching the right of center of the left ship wing --  move ship left to counter bullet next term and hope other enemy bullets don't hit other parts of the ship
+				return 1
+			elif highestPriority == 0:  # bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
 				return 0  # TODO: add logic
-			elif highestPriority == 1:
-				return 0  # TODO: add logic
-			elif highestPriority == 2:					# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
-				return 0
-			elif highestPriority == 3:					# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
-				return 0  # TODO: add logic
-			elif highestPriority == 4:					# bullet is approaching right wing -- move ship right to counter bullet next round
-				return 0  # TODO: add logic
-			else:										# bullet is approaching tip of the ship's right wing -- move ship left to dodge
-				return 0  # TODO: add logic
+			elif highestPriority == 4:  # bullet is approaching right wing -- move ship left to counter bullet next round
+				return 1  # TODO: add logic
+			elif highestPriority == 5:  #
+				return 2;  # TODO: comback  - add logic
+			else:  # bullet is approaching tip of the ship's right wing -- move ship left to dodge
+				if shipLeft < 80 and stateArray[shipLeft + 1][shipCenterCol] != 3:
+
+				# if (shipCenterRow - 2) > 1 and stateArray[shipCenterRow + 3][
+				# 	shipCenterCol] != 3:  # TODO right wing high row # count means further right on screen -- move left means minus 1 to row
+					return 1  # TODO: add logic
+				return 2;  # Can't move right -- because it either moves the ship into a bullet, or there is not enough room to move right.
 		else:
+			# print("if ")
+			# TODO: check if enemy within range of guns bullet in next 10 rounds -- if not, move in directions that puts ships in prox with bullet
+
 			return 0  # TODO add better logic
 		# if pos returned has
 
@@ -718,22 +799,44 @@ class SpaceInvaders(object):
 		width = mth.floor(600 / Config.widthFactor)  # 600 / 50 = 12 columns
 		state_array = np.zeros([height, width], dtype=np.int)
 		for spr in self.allSprites.sprites():
-			row = mth.floor(spr.rect.center[0] / Config.heightFactor) - 1
+			row = mth.floor(spr.rect.left / Config.heightFactor) - 1
+			#	col = mth.floor(spr.rect.center[1] / Config.widthFactor) - 1
 			col = mth.floor(spr.rect.center[1] / Config.widthFactor) - 1
-
 			if type(spr).__name__ == 'Ship':
-				state_array[row + 2][col] = 1  # TODO: keep? need to test
-				state_array[row + 1][col] = 1
+				print("ship rect: ", spr.rect)
+				print("top: ", spr.rect.top, "left: ", spr.rect.left)
+				print("ship row with left: ", row)
+				# print("ship row with top: ",  mth.floor(to))
 				state_array[row][col] = 1
-				state_array[row - 1][col] = 1
-				state_array[row - 2][col] = 1
-				state_array[row - 3][col] = 1  # keep for sure -- do not even think about deleting
+				state_array[row + 1][col] = 1
+				state_array[row + 2][col] = 1
+				state_array[row + 3][col] = 1
+				state_array[row + 4][col] = 1
+				# state_array[row + 5][col] = 1
+				# state_array[row + 6][col] = 1  # Keep?
+
+			# state_array[row + 3][col] = 1 #keep?
+			# state_array[row + 2][col] = 1  # keep
+			# state_array[row + 1][col] = 1
+			# state_array[row][col] = 1
+			# state_array[row - 1][col] = 1
+			# state_array[row - 2][col] = 1
+			# state_array[row - 3][col] = 1  # keep for sure -- do not even think about deleting
 
 			if type(spr).__name__ == 'Enemy':
-				state_array[row - 2][col] = 2
-				state_array[row - 1][col] = 2
+				self.enemySpritesArray.append(spr)
+				# TODO: go back to using left to represent?
+				# state_array[row - 2][col] = 2
+				# state_array[row - 1][col] = 2
 				state_array[row][col] = 2
 				state_array[row + 1][col] = 2
+				state_array[row + 2][col] = 2
+				state_array[row + 3][col] = 2
+			#
+			# state_array[row - 2][col] = 2
+			# state_array[row - 1][col] = 2
+			# state_array[row][col] = 2
+			# state_array[row + 1][col] = 2
 			if type(spr).__name__ == 'Bullet':
 				if (spr.direction == 1):
 					state_array[row][col] = 3
@@ -741,20 +844,28 @@ class SpaceInvaders(object):
 					state_array[row][col] = 6
 			if type(spr).__name__ == 'Mystery':
 				if row >= 0 and col >= 0 and row < height and col <= width:
-					state_array[row - 3][col] = 4
-					state_array[row - 2][col] = 4
-					state_array[row - 1][col] = 4
 					state_array[row][col] = 4
-					if (row < 80):
-						state_array[row + 1][col] = 4
-					if (row < 79):
-						state_array[row + 2][col] = 4
-					if (row < 78):
-						state_array[row + 3][col] = 4
+					state_array[row + 1][col] = 4
+					state_array[row + 2][col] = 4
+					state_array[row + 3][col] = 4
+					state_array[row + 4][col] = 4
+					state_array[row + 5][col] = 4
+					state_array[row + 6][col] = 4
+				# state_array[row - 3][col] = 4
+				# state_array[row - 2][col] = 4
+				# state_array[row - 1][col] = 4
+				# if (row < 79):
+				# 	state_array[row + 1][col] = 4
+				# if (row < 78):
+				# 	state_array[row + 2][col] = 4
+				# if (row < 77):
+				# 	state_array[row + 3][col] = 4
 
 		for blocker in self.allBlockers:
-			row = mth.floor(blocker.rect.center[0] / Config.heightFactor) - 1
+			row = mth.floor(blocker.rect.top / Config.heightFactor) - 1
 			col = mth.floor(blocker.rect.center[1] / Config.widthFactor) - 1
+
+			#	col = mth.floor(blocker.rect.center[1] / Config.widthFactor) - 1
 			state_array[row][col] = 5
 		# TODO: put back in if desired?
 		# np.savetxt('state.txt', state_array, fmt='%i')
@@ -928,9 +1039,6 @@ class SpaceInvaders(object):
 						self.nextRoundText.draw(self.screen)
 						self.livesText.draw(self.screen)
 						self.livesGroup.update(self.keys)
-						# self.check_input()
-						# self.get_state()
-						# self.get_state(25)
 						self.get_action()
 					if currentTime - self.gameTimer > 3000:
 						# Move enemies closer to bottom
@@ -947,9 +1055,6 @@ class SpaceInvaders(object):
 					self.scoreText.draw(self.screen)
 					self.scoreText2.draw(self.screen)
 					self.livesText.draw(self.screen)
-					# self.check_input()
-					#   self.get_state()
-
 					# print state map before agent makes move
 					self.get_action()
 
