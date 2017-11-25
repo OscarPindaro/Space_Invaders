@@ -432,7 +432,6 @@ class SpaceInvaders(object):
 			self.player.move_left()
 		if(action == 2):
 			self.player.move_right()
-	
 	def get_q_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
@@ -448,7 +447,6 @@ class SpaceInvaders(object):
 		if(self.action == 2):
 			self.player.move_right()
 		#else don't move
-
 	def shoot(self):
 		if len(self.bullets) == 0 and self.shipAlive:
 			if self.score < 1000:
@@ -727,6 +725,7 @@ class SpaceInvaders(object):
 					self.reward = self.score if not self.gameOver else -10
 					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
+
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
 
