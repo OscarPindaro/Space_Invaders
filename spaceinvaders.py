@@ -2,6 +2,7 @@
 # Created by Lee Robinson
 
 #!/usr/bin/env python
+import os
 import math as mth
 from pygame import *
 from ddqn import DQNAgent
@@ -290,11 +291,19 @@ class Text(object):
 
 
 class SpaceInvaders(object):
-	def __init__(self, agent, batch_size=50):
-		self.batch_size = batch_size
+	def __init__(self, agent=None, batch_size=50, save_every=25, data_file=None, model_dir=None):
+		#model-based vars
+		file_dir = os.path.dirname(os.path.realpath(__file__))
+		self.prev_score = 0
 		self.agent = agent
+		self.batch_size = batch_size
+		self.save_every = save_every
+		self.data_file = os.path.join(file_dir, data_file)
+		self.model_dir = os.path.join(file_dir, model_dir)
 		self.old_state = []
 		self.action = 0
+		self.update = True
+
 		mixer.pre_init(44100, -16, 1, 512)
 		init()
 		self.caption = display.set_caption('Space Invaders')
@@ -309,6 +318,7 @@ class SpaceInvaders(object):
 		self.enemyPositionStart = self.enemyPositionDefault
 		# Current enemy starting position
 		self.enemyPosition = self.enemyPositionStart
+
 	def reset(self, score, lives, newGame=False):
 		self.player = Ship()
 		self.playerGroup = sprite.Group(self.player)
@@ -432,13 +442,14 @@ class SpaceInvaders(object):
 			self.player.move_left()
 		if(action == 2):
 			self.player.move_right()
+
 	def get_q_action(self):
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
 		self.old_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
-		print(self.old_state.flatten())
+		#print(self.old_state.flatten())
 		self.action = self.agent.act(self.old_state)
 		if(self.action == 0):
 			self.shoot()
@@ -447,6 +458,7 @@ class SpaceInvaders(object):
 		if(self.action == 2):
 			self.player.move_right()
 		#else don't move
+
 	def shoot(self):
 		if len(self.bullets) == 0 and self.shipAlive:
 			if self.score < 1000:
@@ -665,10 +677,11 @@ class SpaceInvaders(object):
 
 	def main(self, it):
 		i = 0
-		scoreList = set()
+		scoreList = list()
 		while True:
 			if self.mainScreen:
 				i +=1
+				self.update = True
 				self.reset(0, 1, True)
 				self.screen.blit(self.background, (0,0))
 				self.titleText.draw(self.screen)
@@ -714,6 +727,7 @@ class SpaceInvaders(object):
 					self.get_state(25)
 
 					#model prediction
+					self.prev_score = self.score
 					self.get_q_action()
 
 					#game update
@@ -722,14 +736,15 @@ class SpaceInvaders(object):
 					self.check_collisions()
 
 					#model save
-					self.reward = self.score if not self.gameOver else -10
+					score_delta = self.score - self.prev_score
+					self.reward = self.score if not self.gameOver else -100
 					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
 
 					self.create_new_ship(self.makeNewShip, currentTime)
 					self.update_enemy_speed()
 
-					print(self.reward)
+					#print(self.reward)
 
 					if len(self.enemies) > 0:
 						self.make_enemies_shoot()
@@ -739,23 +754,51 @@ class SpaceInvaders(object):
 				# Reset enemy starting position
 				self.enemyPositionStart = self.enemyPositionDefault
 				self.create_game_over(currentTime)
-				scoreList.add((i, self.score))
+
+				if self.update:
+					game_num = i
+					scoreList.append((i, self.score))
+					print('Game {} over\nScore: {}'.format(game_num, self.score))
+					#save the weights to the model dir
+					if(game_num % self.save_every == 0):
+						print('Saving weights for game {}'.format(game_num))
+						self.agent.save(os.path.join(self.model_dir, 'game_{}'.format(game_num)))
+					#reinforcement learning
+					self.agent.update_target_model()
+					if len(self.agent.memory) > self.batch_size:
+						print('applying reinforcement')
+						self.agent.replay(self.batch_size)
+					self.update = False
+
+				#end training: save game scores to file and exit
 				if(i >= it):
+					with open(self.data_file, 'w+') as f:
+						f.write('game_number,score\n')
+						for _game, _score in scoreList:
+								f.write('{},{}\n'.format(_game, _score))
 					break
 
-				#reinforcement learning
-				if len(self.agent.memory) > self.batch_size:
-					print('applying reinforcement')
-					self.agent.replay(self.batch_size)
 				
 			display.update()
 			self.clock.tick(60)
 		print(scoreList)
 
-if __name__ == '__main__':
+def get_args():
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-i','--iterations',type=int, required=True)
-	args = parser.parse_args()
+	parser.add_argument('-d', '--data_file', required=False, default='data/scores.txt')
+	parser.add_argument('-m', '--model_directory', required=False, default='models')
+	parser.add_argument('-s', '--save', type=int, required=False, default=100)
+	return parser
+
+#def __init__(self, agent=None, batch_size=50, save_every=25, data_file=None, model_directory=None):
+
+if __name__ == '__main__':
+	args = get_args().parse_args()
 	agent = DQNAgent(800*600, 4)
-	game = SpaceInvaders(agent, batch_size=100)
+
+	game = SpaceInvaders(agent, batch_size=100,
+		save_every=args.save,
+		data_file=args.data_file,
+		model_dir=args.model_directory)
 	game.main(args.iterations)
