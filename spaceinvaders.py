@@ -497,43 +497,43 @@ class SpaceInvaders(object):
                     self.timer = time.get_ticks()
                     #print("col: " + str(column) + " row: " + str(row))
 
-	def calculate_score(self, row):
-		scores = {0: 30,
-				  1: 20,
-				  2: 20,
-				  3: 10,
-				  4: 10,
-				  5: 150 # choice([50, 100, 150, 300])
-				 }
-					  
-		score = scores[row]
-		self.score += score
-		return score
+    def calculate_score(self, row):
+        scores = {0: 30,
+                  1: 20,
+                  2: 20,
+                  3: 10,
+                  4: 10,
+                  5: 150 # choice([50, 100, 150, 300])
+                 }
 
-	def get_state(self, factor):
-		width = mth.floor(800/factor)
-		height = mth.floor(600/factor)
-		state_array = np.zeros([width,height],dtype=np.int)
-		for spr in self.allSprites.sprites():
-			x = mth.floor(spr.rect.center[0] / factor)-1
-			y = mth.floor(spr.rect.center[1] / factor)-1
-			if type(spr).__name__ == 'Ship':
-				state_array[x][y] = 1
-			if type(spr).__name__ == 'Enemy':
-				state_array[x][y] = 2
-			if type(spr).__name__ == 'Bullet':
-				if(spr.direction == 1):
-					state_array[x][y] = 3
-				else:
-					state_array[x][y] = 6
-			if type(spr).__name__ == 'Mystery':
-				if x >= 0 and y >= 0 and x < width and y <= height:
-					state_array[x][y] = 4
-		for blocker in self.allBlockers:
-			x = mth.floor(blocker.rect.center[0] / factor)-1
-			y = mth.floor(blocker.rect.center[1] / factor)-1
-			state_array[x][y] = 5
-		return state_array
+        score = scores[row]
+        self.score += score
+        return score
+
+    def get_state(self, factor):
+        width = mth.floor(800/factor)
+        height = mth.floor(600/factor)
+        state_array = np.zeros([width,height],dtype=np.int)
+        for spr in self.allSprites.sprites():
+            x = mth.floor(spr.rect.center[0] / factor)-1
+            y = mth.floor(spr.rect.center[1] / factor)-1
+            if type(spr).__name__ == 'Ship':
+                state_array[x][y] = 1
+            if type(spr).__name__ == 'Enemy':
+                state_array[x][y] = 2
+            if type(spr).__name__ == 'Bullet':
+                if(spr.direction == 1):
+                    state_array[x][y] = 3
+                else:
+                    state_array[x][y] = 6
+            if type(spr).__name__ == 'Mystery':
+                if x >= 0 and y >= 0 and x < width and y <= height:
+                    state_array[x][y] = 4
+        for blocker in self.allBlockers:
+            x = mth.floor(blocker.rect.center[0] / factor)-1
+            y = mth.floor(blocker.rect.center[1] / factor)-1
+            state_array[x][y] = 5
+        return state_array
 
     def get_state(self, factor):
         width = mth.floor(800/factor)
@@ -672,12 +672,12 @@ class SpaceInvaders(object):
             self.makeNewShip = False
             self.shipAlive = True
 
-	def create_game_over(self, currentTime):
-		self.mainScreen = True
-		
-		for e in event.get():
-			if e.type == QUIT:
-				sys.exit()
+    def create_game_over(self, currentTime):
+        self.mainScreen = True
+
+        for e in event.get():
+            if e.type == QUIT:
+                sys.exit()
 
     def main(self, it):
         i = 0
