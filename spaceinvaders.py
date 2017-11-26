@@ -487,12 +487,11 @@ class SpaceInvaders(object):
 
 		shipCenterRow = self.player.rect.center[0]
 
-	#	print("test of enemeyArray", self.enemySpritesArray)
-	# for enemy in self.enemySpritesArray:
-	# 	print("enemy location: ", enemy.rect)
-	# for spr in self.allSprites.sprites():
-	# 	if type(spr).__name__ == 'Enemy':
 
+		print("test of enemeyArray", self.enemySpritesArray)
+		# for enemy in self.enemySpritesArray:
+		# 	print("enemy location: ", enemy.rect)
+		#
 
 	# get enemy ships sprites: find location
 
@@ -799,7 +798,6 @@ class SpaceInvaders(object):
 			row = mth.floor(spr.rect.center[0] / Config.heightFactor) - 1
 			col = mth.floor(spr.rect.center[1] / Config.widthFactor) - 1
 			if type(spr).__name__ == 'Ship':
-				state_array[row + 3][col] = 1 #keep?
 				state_array[row + 2][col] = 1  # keep
 				state_array[row + 1][col] = 1
 				state_array[row][col] = 1
