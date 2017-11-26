@@ -343,7 +343,7 @@ class SpaceInvaders(object):
         seed(datetime.utcnow())
 
         self.genomeStep = 0
-        self.genome = self.generate_population(100, 1)
+        self.currentGenome = self.newPopulation[self.populationPos] # self.generate_population(100, 1)
 
     def make_blockers(self, number):
         blockerGroup = sprite.Group()
@@ -441,10 +441,10 @@ class SpaceInvaders(object):
             self.player.move_right()
 
     def get_genetic_action(self):
-        if self.genomeStep >= len(self.genome[0]):
+        if self.genomeStep >= len(self.currentGenome['genome']):
             self.genomeStep = 0
 
-        action = self.genome[0][self.genomeStep]
+        action = self.currentGenome['genome'][self.genomeStep]
         self.genomeStep += 1
 
         if action == 0:
@@ -455,7 +455,7 @@ class SpaceInvaders(object):
             self.player.move_right()
 
     def generate_population(self, move_count, population_size):
-        return [[randint(0, 2) for i in range(0, move_count)]
+        return [dict([('score', 0), ('genome', [randint(0, 2) for i in range(0, move_count)])])
                 for j in range(0, population_size)]
 
     def generate_skewed_random_action(self):
@@ -464,23 +464,79 @@ class SpaceInvaders(object):
         else:
             return randint(1, 2)
 
+    def load_old_and_new_populations(self):
+        self.oldPopulation = self.load_genomes()
+        return self.genetic_process(self.oldPopulation)
+
     def load_genomes(self):
-        with open("genome.json", "r") as infile:
-            return json.load(infile)
-
-    def save_genome_with_score(self):
-
         if os.path.isfile("./genome.json"):
-            data = self.load_genomes()
+            with open("genome.json", "r") as infile:
+                return json.load(infile)
         else:
-            data = []
+            return self.generate_population(100, 10) # generatedPopulation = self.generate_population(100, 10)
 
-        genome = dict([('score', self.score), ('genome', self.genome[0])])
-        data.append(genome)
+    def save_fittest_population(self):
+        #if os.path.isfile("./genome.json"):
+        #    data = self.load_genomes()
+        #else:
+        #    data = []
+
+        data = []
+        data.extend(self.oldPopulation)
+        data.extend(self.newPopulation)
+
+        #genome = dict([('score', self.score), ('genome', self.currentGenome)])
+        #data.append(genome)
         data = sorted(data, key=lambda k: k['score'], reverse=True)
 
+        # make sure our verboseData folder exists...
+        if not os.path.exists("verboseData"):
+            os.makedirs("verboseData")
+
+        # write our entire population to a file with the timestamp for whatever analytics we want later
+        verboseFilePath = os.path.join("verboseData", "genome" + datetime.now().strftime("%Y%m%d-%H%M%S") + ".json")
+        with open(verboseFilePath, "w") as verboseFile:
+            json.dump(data, verboseFile, indent=2)
+
+        data = data[:10]
+
+        # write to our file containing the latest population
         with open("genome.json", "w") as outfile:
             json.dump(data, outfile, indent=2)
+
+
+    def update_current_genome_score(self):
+        self.newPopulation[self.populationPos]['score'] = self.score
+
+    def genetic_process(self, population):
+        populationSize = len(population)
+        genomeLength = len(population[0]['genome'])
+
+        childPopulation = []
+
+        for i in range(0, int(populationSize/2)):
+            mother = population[randint(0, populationSize - 1)]['genome']
+            father = population[randint(0, populationSize - 1)]['genome']
+
+            # cross over
+            pivotPoint = randint(0, genomeLength - 1)
+            firstChild = mother[:pivotPoint] + father[pivotPoint:]
+            secondChild = father[:pivotPoint] + mother[pivotPoint:]
+
+            # mutate
+            firstChild = self.mutate(firstChild)
+            secondChild = self.mutate(secondChild)
+
+            childPopulation.append(dict([('score', 0), ('genome', firstChild)]))
+            childPopulation.append(dict([('score', 0), ('genome', secondChild)]))
+
+        return childPopulation
+
+    def mutate(self, genome):
+        if randint(0, 3) <= 2: # 75% mutatation chance
+            geneToMutate = randint(0, len(genome) - 1)
+            genome[geneToMutate] = randint(0,2)
+        return genome
 
     def shoot(self):
         if len(self.bullets) == 0 and self.shipAlive:
@@ -695,12 +751,16 @@ class SpaceInvaders(object):
             if e.type == QUIT:
                 sys.exit()
 
-    def main(self, it):
-        i = 0
+    def main(self, maxIterations):
+        currentIteration = 0
         scoreList = set()
+
+        # create init population or load previous population (and then mutate)
+        self.newPopulation = self.load_old_and_new_populations()
+        self.populationPos = 0
+
         while True:
             if self.mainScreen:
-                i +=1
                 self.reset(0, 1, True)
                 self.screen.blit(self.background, (0,0))
                 self.titleText.draw(self.screen)
@@ -725,7 +785,7 @@ class SpaceInvaders(object):
                         self.livesText.draw(self.screen)
                         self.livesGroup.update(self.keys)
                         #self.check_input()
-                        self.get_state(25)
+                        #self.get_state(25)
                         #self.get_action()
                         self.get_genetic_action()
                     if currentTime - self.gameTimer > 3000:
@@ -744,7 +804,7 @@ class SpaceInvaders(object):
                     self.scoreText2.draw(self.screen)
                     self.livesText.draw(self.screen)
                     #self.check_input()
-                    self.get_state(25)
+                    #self.get_state(25)
                     #self.get_action()
                     self.get_genetic_action()
                     self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
@@ -757,19 +817,31 @@ class SpaceInvaders(object):
                         self.make_enemies_shoot()
 
             elif self.gameOver:
-                print("I'm in game over!")
-                self.save_genome_with_score()
+                print("I just finished iteration %d population position %d with a score of %d!" % (currentIteration, self.populationPos, self.score))
+                self.update_current_genome_score()
+                self.populationPos += 1
+                #self.save_fittest_population()
+                #self.newPopulation = self.load_old_and_new_populations()
                 currentTime = time.get_ticks()
                 # Reset enemy starting position
                 self.enemyPositionStart = self.enemyPositionDefault
                 self.create_game_over(currentTime)
-                scoreList.add((i, self.score))
-                if(i >= it):
+                #scoreList.add((currentIteration, self.score))
+
+                if currentIteration >= maxIterations - 1 and self.populationPos >= 10:
+                    self.save_fittest_population()
                     break
+                elif self.populationPos >= 10:
+                    self.save_fittest_population()
+                    self.newPopulation = self.load_old_and_new_populations()
+                    currentIteration += 1
+                    self.populationPos = 0
 
             display.update()
             self.clock.tick(60)
-        print(scoreList)
+
+        #self.save_fittest_population()
+        #print(scoreList)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
