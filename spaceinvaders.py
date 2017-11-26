@@ -476,17 +476,10 @@ class SpaceInvaders(object):
             return self.generate_population(100, 10) # generatedPopulation = self.generate_population(100, 10)
 
     def save_fittest_population(self):
-        #if os.path.isfile("./genome.json"):
-        #    data = self.load_genomes()
-        #else:
-        #    data = []
-
         data = []
         data.extend(self.oldPopulation)
         data.extend(self.newPopulation)
 
-        #genome = dict([('score', self.score), ('genome', self.currentGenome)])
-        #data.append(genome)
         data = sorted(data, key=lambda k: k['score'], reverse=True)
 
         # make sure our verboseData folder exists...
@@ -504,6 +497,7 @@ class SpaceInvaders(object):
         with open("genome.json", "w") as outfile:
             json.dump(data, outfile, indent=2)
 
+        print("Saved this iteration's data! (%s)" % datetime.now().strftime("%Y%m%d-%H%M%S"))
 
     def update_current_genome_score(self):
         self.newPopulation[self.populationPos]['score'] = self.score
@@ -576,6 +570,10 @@ class SpaceInvaders(object):
 
         # determine if we need to have an enemy shoot yet
         if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+
+            # loop enemy shooting in case we hit the limit
+            if self.counter == len(self.randNums):
+                self.counter = 0
 
             # determine what row and column to shoot from
             column = columnList[self.randNums[self.counter] % len(columnList)]
@@ -750,10 +748,9 @@ class SpaceInvaders(object):
         for e in event.get():
             if e.type == QUIT:
                 sys.exit()
-    
+
     def main(self, maxIterations):
-        currentIteration = 0
-        scoreList = set()
+        currentGeneration = 0
 
         # create init population or load previous population (and then mutate)
         self.newPopulation = self.load_old_and_new_populations()
@@ -817,31 +814,25 @@ class SpaceInvaders(object):
                         self.make_enemies_shoot()
 
             elif self.gameOver:
-                print("I just finished iteration %d population position %d with a score of %d!" % (currentIteration, self.populationPos, self.score))
+                print("I just finished generation: %d population pos: %d with a score of: %d! (%s)" % (currentGeneration, self.populationPos, self.score, datetime.now().strftime("%Y%m%d-%H%M%S")))
                 self.update_current_genome_score()
                 self.populationPos += 1
-                #self.save_fittest_population()
-                #self.newPopulation = self.load_old_and_new_populations()
                 currentTime = time.get_ticks()
                 # Reset enemy starting position
                 self.enemyPositionStart = self.enemyPositionDefault
                 self.create_game_over(currentTime)
-                #scoreList.add((currentIteration, self.score))
 
-                if currentIteration >= maxIterations - 1 and self.populationPos >= 10:
+                if currentGeneration >= maxIterations - 1 and self.populationPos >= 10:
                     self.save_fittest_population()
                     break
                 elif self.populationPos >= 10:
                     self.save_fittest_population()
                     self.newPopulation = self.load_old_and_new_populations()
-                    currentIteration += 1
+                    currentGeneration += 1
                     self.populationPos = 0
 
             display.update()
             self.clock.tick(60)
-
-        #self.save_fittest_population()
-        #print(scoreList)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
