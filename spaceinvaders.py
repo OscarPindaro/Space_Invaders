@@ -750,13 +750,7 @@ class SpaceInvaders(object):
         for e in event.get():
             if e.type == QUIT:
                 sys.exit()
-	def create_game_over(self, currentTime):
-		self.mainScreen = True
-
-		for e in event.get():
-			if e.type == QUIT:
-				sys.exit()
-
+    
     def main(self, maxIterations):
         currentIteration = 0
         scoreList = set()
