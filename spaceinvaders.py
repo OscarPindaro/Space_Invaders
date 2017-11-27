@@ -312,7 +312,7 @@ class SpaceInvaders(object):
 		self.enemyPosition = self.enemyPositionStart
 
 		# STORE Enemy sprite locations -- update each time get_state is updated.
-		self.enemySpritesArray = []  # TODO: fix -- working on
+		self.enemySpritesArray = []
 
 	def reset(self, score, lives, newGame=False):
 		self.player = Ship()
@@ -430,6 +430,7 @@ class SpaceInvaders(object):
 							self.allSprites.add(self.bullets)
 							self.sounds["shoot2"].play()
 
+	#TODO: remove method
 	# check if enemy to left
 	def enemy_bullet_is_left(self, proximityStates, shipX, shipY):
 		if shipY > 0:
@@ -438,6 +439,7 @@ class SpaceInvaders(object):
 				return True
 		return False
 
+	#TODO: remove method
 	# checks the row above the enemy and checks to see if a bullet is within x coordinates of the ship -- this allows us to give enough time to move
 	def enemey_bullet_is_right(self, proximityStates, shipX, shipY):
 		if shipY < 23:
@@ -458,6 +460,7 @@ class SpaceInvaders(object):
 				return i
 		return Config.inf
 
+	#TODO: make this method more elegant
 	# returns the index representing the part of ship vulnerable that has the closet bullets
 	def highestPriorityBullet(self, bulletArray):
 		pos = []
@@ -465,20 +468,24 @@ class SpaceInvaders(object):
 		for i in range(0, len(bulletArray) - 1):  # dont want to include col row is in
 			if bulletArray[i] != Config.inf and bulletArray[i] >= highestvalue:
 				highestvalue = bulletArray[i]
-				pos.append(
-					i)  # bullet array has length six - 1 position for each of the rows used to reprsent the ship. if 4 is in the list, it means that the ships center is the most vulnerable part of the ship.
+				pos.append(i)
+				# bullet array has length six - 1 position for each of the rows used to reprsent the ship. if 4 is in the list, it means that the ships center is the most vulnerable part of the ship.
 
 		# no bullets approaching any parts of the ship
 		if len(pos) == 0:
 			return "none"
 
+		print("pos values:", pos)	#TODO: remove after testing
 		# two or more parts of the ship are equally vulnerable to being hit by an enemy bullet  -- TODO: create logic to determine which part of the ship should be prioritized -- might want to check nearby rows to help make decision
 		if len(pos) > 1:
-			return 4  #TODO: placeholder - prioritze ship rcenter
+			if pos.__contains__(4):
+				print("returing index 4: ",  pos.index(4))
+				return pos.index(4) #TODO: add better logic later    --- be especially  mindful of the case when multiple bullets approach right side of ship
+
 		# TODO: add logic to figure out which bullet to prioritize
 		return pos[0]
 
-	# TODO: check if bullet is in 1 row  above adn 1 col directly to the left?
+	# TODO: check if bullet is in 1 row  above and 1 col directly to the left?
 	#stateArray[79] = 1 => ship is all the way to the left of the screen
 	def move_right_is_safe(self, stateArray):
 
@@ -504,87 +511,51 @@ class SpaceInvaders(object):
 		return True
 
 
-
-
+	# cases: enemy ships only on left side of our ship -- moving left away from ship
+	# cases: enemy ships only on left side of our ship -- moving right toward from ship
+	# cases: enemy ships only on right side of our ship -- moving left toward ship
+	# cases: enemy ships only on right side of our ship -- moving right away from ship
+	# cases: enemy ships on both sides of our ship -- moving left away from ship
+	# cases: enemy ships on both sides of our ship -- moving right away from ship
 	# check if enemies are x rows above- or x rows below -- if so -- check if within shooting distance -- if  not - move towards it.
 	def playerAndEnemyPolicy(self, stateArray):
-
 		# TODO: consider making shipCenterRow a class variable to avoid redudante assingments
 		shipCenterRowReal = self.player.rect.center[0]  # no need to factor -- used just for finding distance between enemy ship and our ship
 
 		closestEnemy = self.enemySpritesArray[0]
-		closestEnemyDist = shipCenterRowReal - closestEnemy.rect.center[
-			0]  # max distance between ship and enemy -- assumes on opposite sides
+		closestEnemyDist = shipCenterRowReal - closestEnemy.rect.center[0]  # max distance between ship and enemy -- assumes on opposite sides
+		#enemyDirection = closestEnemy.direction
 
-		# find closet enemy sprite -- move towards it
+		#statArray[79] -- left most side of screen   ---    stateArray[0] - right most side of screen
+		# find closet enemy sprite -- move towards it -- the goal is to chase only when we need to.
 		for enemy in self.enemySpritesArray:
 			dist = self.player.rect.center[0] - enemy.rect.center[0]  # get distance between rows
-			if abs(dist) < closestEnemyDist:
-				closestEnemyDist = dist
-				closestEnemy = enemy
+			if abs(dist) <= closestEnemyDist:
+				#if enemy is coming towards ship and it has the same distance or a shorter distance to ship -- choose this as our target ship -- if neither condition is met -- first enemy will be used to determine ships action
+				#enemy is to the left and moving right towards the ship or the enemy is to the right and moving left towards the ship:
+				if dist < 0 and closestEnemy.direction == -1 or dist > 0 and closestEnemy.direction == 1:
+					closestEnemyDist = dist
+					closestEnemy = enemy
 
+
+		#TODO: remove after testing
+		print("shipX: ", shipCenterRowReal, "enemyX: ", closestEnemy.rect.center[0])
 		print("closest enemy dist: ", closestEnemyDist)
 		print("closest enemy dist factor: ", closestEnemyDist / Config.heightFactor)
-
 		print("closest enemy pos: ", closestEnemy.rect)
 		print("closest enemy direction: ", closestEnemy.direction)  # -1 means enemy ship is moving left
 
-		# shipCol = mth.floor(self.player.rect.center[1] / Config.widthFactor) - 1
-		# shipCenterRow = mth.floor(shipCenterRow / Config.widthFactor) - 1
-
-		# #neg closestEnemyDist => enemy is in higher row then ship and is therefore to the left of the ship
-
-		# #if closest enemy is to the left of the ship and is more than 2 rows away -  TODO: play with this n umber
-		if closestEnemyDist < 0 and abs(closestEnemyDist) / Config.heightFactor > 8:
-			print("enemy is out of range ")
-
-			# #enemy is moving in the left direction --
-			# if closestEnemy.direction > 0 and self.move_immediate_right_safe(stateArray):
-			# 	return 2  # move right to chase  #TODO: add check to ensure no bullet to immediate left
-			if self.move_right_is_safe(stateArray):
-				print("safe to move right -- moving right")
+		#TODO: check logic --- figure out how to do
+		#cases: enemy ships only on left side of our ship -- moving left away from ship      -- if more than 4 positions away
+		if mth.floor(abs(closestEnemyDist) / Config.heightFactor) >= 4:
+			#more than 4 positions
+			if dist < 0 and closestEnemy.direction == 1:
 				return 2
-
-			return 2
-
-		# enemy is to the right of the ship and is more than 2 rows away -- chase
-
-		if closestEnemyDist / Config.heightFactor > 8:
-			print("enemy is out of range ")
-
-			# print("enemy is out of range")
-			# if closestEnemy.direction < 0 and self.move_immediate_left_safe(stateArray):
-			# 	return 1
-
-
-			if self.move_left_is_safe(stateArray):
-				print("safe to move left -- moving left")
+			#cases: enemy ships only on right side of our ship -- moving right away from ship
+			if dist > 0 and closestEnemy.direction == -1:
 				return 1
-
-		print("shooting")
+		#else shoot
 		return 0
-	# get enemy ships sprites: find location
-
-	# check if any are within x positions heading towards the ship  -- if so return 0
-
-	# if ships are moving away from the ship
-
-
-	# #if enemy is 10 rows above ship and is moving in the direction of the ship
-	# for row in range(0, shipCenterRow):
-	# 	if stateArray[row] == 2:
-	# 		if sta
-	#
-	# #checking if enemies are below ship
-	# for row in range(shipCenterRow, 80):
-	# 	if stateArray[row] == 2:
-
-
-	# enemysAbove = True
-
-	# if enemy is 10 rows below ship
-
-
 
 	##Strategy: prioritize dodging or killing bullets within 3 * 50 px of any part of the ship
 	## otherwise shoot and hope target is hit -- next iteration will try to be strategic about hitting enemies.
@@ -594,9 +565,7 @@ class SpaceInvaders(object):
 	#            move right: 2
 	@property
 	def utility(self):
-		bulletFound = False
-
-		shipCenterRow = mth.floor(self.player.rect.center[0] / Config.heightFactor) - 1  # row?
+		shipCenterRow = mth.floor(self.player.rect.center[0] / Config.heightFactor) - 1  #TODO: replace with self method.s
 		shipCenterCol = mth.floor(self.player.rect.center[1] / Config.widthFactor) - 1
 
 		text = Text(FONT, 20, str("Ship Coord - col: ") + str(shipCenterRow) + ',row:' + str(shipCenterCol), GREEN, 135,
@@ -658,12 +627,12 @@ class SpaceInvaders(object):
 
 		# TODO: combine if logic
 		# returns an empty array if no bullets are coming towards ship
-		highestPriority = self.highestPriorityBullet(enemyBulletsPositions) #TODO: error here -- not actually returning best priority value
-		print("highestPrioirty bullet: ", highestPriority)
+		highestPriority = self.highestPriorityBullet(enemyBulletsPositions) #TODO: error here -- not actually returning best priority value -- todo comment to return best priority bullet when multiple bullets will hit vulnerable areas of the ship
+		print("highestPrioirty bullet: ", highestPriority)		#TODO: remove after testing
 
-		# print(bulletPosition)
+
 		#TODO: fix here  so it doesn't go back and forth forever
-		if highestPriority != "none" and enemyBulletsPositions[highestPriority] > 6:
+		if highestPriority != "none" and enemyBulletsPositions[highestPriority] > 5:
 			# bullet is approaching very edge of left wing tip edge  --- move ship right to dodge - provided this does not move in line of bullet
 			if highestPriority == 0:
 				if self.move_right_is_safe(stateArray):
@@ -672,11 +641,10 @@ class SpaceInvaders(object):
 			# bullet is approaching left wing tip move ship left - check if its better to move left or right next round?- - probably doomed
 			elif highestPriority == 1:  # bullet is
 				#neither option is a good one -- the ship will hope for a hail mary and shoot.
-				if self.move_right_is_safe(stateArray):
-					return 2
+				if self.move_left_is_safe(stateArray):
+					return 1
 				#elif self.move_left_is_safe(stateArray) and lastAction != 2:
-				return 1
-			#TODO: finish last action from here down
+				return 2
 			# bullet approaching the right of center of the left ship wing --  move ship left to counter bullet next term and hope other enemy bullets don't hit other parts of the ship
 			elif highestPriority == 2:
 				if self.move_left_is_safe(stateArray):
@@ -684,18 +652,19 @@ class SpaceInvaders(object):
 
 			# bullet approaching center of ship -- counter bullet and hope other enemy bullets don't hit other parts of the ship
 			elif highestPriority == 3:
-				return 0  # TODO: add logic
-			# bullet is approaching center of right wing -- move ship left to counter bullet next round
+				return 0
+			# bullet is approaching center of right wing -- move ship left to counter bullet next round			#TODO: Fix logic here    --- kills ship unnecessarily
 			elif highestPriority == 4:
-				if self.move_left_is_safe(stateArray):
-					return 1  # TODO: add logic
-			#bullet is approaching right wing tip
+				if self.move_right_is_safe(stateArray):   #check to make sure that if I move left it doesnt put me in path of another bullet #try to dodge bullet if possible - others
+					return 2
+				return 1
+			#bullet is approaching right wing tip  -- move left to dodge		#TODO: Fix logic here    --- kills ship unnecessarily
 			elif highestPriority == 5:  #
-				if self.move_right_is_safe(stateArray):
-					return 2  # TODO: comback  - add logic
-			else: #TODO _ used?
+				if self.move_left_is_safe(stateArray):
+					return 1
+			else:
 
-				#no real good stragey left -- hope for the best
+				#no real good strategy left -- hope for the best  -- good luck -- you'll needit.
 				if (shipCenterRow - 2) > 1 and stateArray[shipCenterRow + 3][shipCenterCol] != 3:  # TODO right wing high row # count means further right on screen -- move left means minus 1 to row
 					return 1
 				if (shipCenterRow + 2) < 79 and stateArray[shipCenterRow - 3][shipCenterCol] != 3:
@@ -788,18 +757,12 @@ class SpaceInvaders(object):
 
 	##expand to get list that contains ship coords and array of nearyby sprites gride
 	def get_action(self):
-		print("ship x original ", self.player.rect.center[0])
-		print("size of ship ", self.player.rect)
-
 		self.keys = key.get_pressed()
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
 
-		# action = 0
 		action = self.utility
-
-		# randint(0, 2)
 		if (action == 0):
 			self.shoot()
 		if (action == 1):
