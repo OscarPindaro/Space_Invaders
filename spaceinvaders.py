@@ -335,10 +335,11 @@ class SpaceInvaders(object):
         self.shipAlive = True
         self.killedArray = [[0] * 10 for x in range(5)]
 
-        self.counter = 0
-        seed(42)
-        self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
-        seed(datetime.utcnow())
+        if self.unrandomizeEnemyShooting:
+            self.counter = 0
+            seed(42)
+            self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
+            seed(datetime.utcnow())
 
     def make_blockers(self, number):
         blockerGroup = sprite.Group()
@@ -469,33 +470,63 @@ class SpaceInvaders(object):
         self.allSprites = sprite.Group(self.player, self.enemies, self.livesGroup, self.mysteryShip)
 
     def make_enemies_shoot(self):
-        columnList = []
-        rowList = []
-        for enemy in self.enemies:
-            columnList.append(enemy.column)
 
-        columnSet = set(columnList)
-        columnList = list(columnSet)
+        # make enemies shoot in an unrandom manner
+        if self.unrandomizeEnemyShooting:
+            columnList = []
+            rowList = []
+            for enemy in self.enemies:
+                columnList.append(enemy.column)
 
-        # determine if we need to have an enemy shoot yet
-        if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+            columnSet = set(columnList)
+            columnList = list(columnSet)
 
-            # determine what row and column to shoot from
-            column = columnList[self.randNums[self.counter] % len(columnList)]
+            # determine if we need to have an enemy shoot yet
+            if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+
+                # loop enemy shooting in case we hit the limit
+                if self.counter == len(self.randNums):
+                    self.counter = 0
+
+                # determine what row and column to shoot from
+                column = columnList[self.randNums[self.counter] % len(columnList)]
+                for enemy in self.enemies:
+                    if enemy.column == column:
+                        rowList.append(enemy.row)
+                row = rowList[self.randNums[self.counter] % len(rowList)]
+
+                self.counter += 1
+
+                # find the enemy in that row and column and shoot from them
+                for enemy in self.enemies:
+                    if enemy.column == column and enemy.row == row:
+                        self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
+                        self.allSprites.add(self.enemyBullets)
+                        self.timer = time.get_ticks()
+                        #print("col: " + str(column) + " row: " + str(row))
+
+        # make enemies shoot in a random manner
+        else:
+            columnList = []
+            for enemy in self.enemies:
+                columnList.append(enemy.column)
+
+            columnSet = set(columnList)
+            columnList = list(columnSet)
+            shuffle(columnList)
+            column = columnList[0]
+            rowList = []
+
             for enemy in self.enemies:
                 if enemy.column == column:
                     rowList.append(enemy.row)
-            row = rowList[self.randNums[self.counter] % len(rowList)]
-
-            self.counter += 1
-
-            # find the enemy in that row and column and shoot from them
+            row = max(rowList)
             for enemy in self.enemies:
                 if enemy.column == column and enemy.row == row:
-                    self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
-                    self.allSprites.add(self.enemyBullets)
-                    self.timer = time.get_ticks()
-                    #print("col: " + str(column) + " row: " + str(row))
+                    if (time.get_ticks() - self.timer) > 200:  # changed from original 700 (affects enemy bullet amount)
+                        self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
+                        self.allSprites.add(self.enemyBullets)
+                        self.timer = time.get_ticks()
 
     def calculate_score(self, row):
         scores = {0: 30,
@@ -509,31 +540,6 @@ class SpaceInvaders(object):
         score = scores[row]
         self.score += score
         return score
-
-    def get_state(self, factor):
-        width = mth.floor(800/factor)
-        height = mth.floor(600/factor)
-        state_array = np.zeros([width,height],dtype=np.int)
-        for spr in self.allSprites.sprites():
-            x = mth.floor(spr.rect.center[0] / factor)-1
-            y = mth.floor(spr.rect.center[1] / factor)-1
-            if type(spr).__name__ == 'Ship':
-                state_array[x][y] = 1
-            if type(spr).__name__ == 'Enemy':
-                state_array[x][y] = 2
-            if type(spr).__name__ == 'Bullet':
-                if(spr.direction == 1):
-                    state_array[x][y] = 3
-                else:
-                    state_array[x][y] = 6
-            if type(spr).__name__ == 'Mystery':
-                if x >= 0 and y >= 0 and x < width and y <= height:
-                    state_array[x][y] = 4
-        for blocker in self.allBlockers:
-            x = mth.floor(blocker.rect.center[0] / factor)-1
-            y = mth.floor(blocker.rect.center[1] / factor)-1
-            state_array[x][y] = 5
-        return state_array
 
     def get_state(self, factor):
         width = mth.floor(800/factor)
@@ -679,9 +685,12 @@ class SpaceInvaders(object):
             if e.type == QUIT:
                 sys.exit()
 
-    def main(self, it):
+    def main(self, it, unrandomize):
         i = 0
         scoreList = set()
+
+        self.unrandomizeEnemyShooting = unrandomize
+
         while True:
             if self.mainScreen:
                 i +=1
@@ -755,7 +764,8 @@ class SpaceInvaders(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--iterations',type=int, required=True)
+    parser.add_argument('-i', '--iterations', type=int, required=True)
+    parser.add_argument('-u', '--unrandomize', action='store_true', default=False)
     args = parser.parse_args()
     game = SpaceInvaders()
-    game.main(args.iterations)
+    game.main(args.iterations, args.unrandomize)
