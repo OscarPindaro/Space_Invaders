@@ -337,10 +337,11 @@ class SpaceInvaders(object):
         self.shipAlive = True
         self.killedArray = [[0] * 10 for x in range(5)]
 
-        self.counter = 0
-        seed(42)
-        self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
-        seed(datetime.utcnow())
+        if self.unrandomizeEnemyShooting:
+            self.counter = 0
+            seed(42)
+            self.randNums = [randint(1, 100) for i in range(1, 10000)] # array of seeded random numbers to make each iteration the same, but appear random
+            seed(datetime.utcnow())
 
         self.genomeStep = 0
         self.currentGenome = self.newPopulation[self.populationPos] # self.generate_population(100, 1)
@@ -560,37 +561,63 @@ class SpaceInvaders(object):
         self.allSprites = sprite.Group(self.player, self.enemies, self.livesGroup, self.mysteryShip)
 
     def make_enemies_shoot(self):
-        columnList = []
-        rowList = []
-        for enemy in self.enemies:
-            columnList.append(enemy.column)
 
-        columnSet = set(columnList)
-        columnList = list(columnSet)
+        # make enemies shoot in an unrandom manner
+        if self.unrandomizeEnemyShooting:
+            columnList = []
+            rowList = []
+            for enemy in self.enemies:
+                columnList.append(enemy.column)
 
-        # determine if we need to have an enemy shoot yet
-        if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
+            columnSet = set(columnList)
+            columnList = list(columnSet)
 
-            # loop enemy shooting in case we hit the limit
-            if self.counter == len(self.randNums):
-                self.counter = 0
+            # determine if we need to have an enemy shoot yet
+            if (time.get_ticks() - self.timer) > 200: # changed from original 700 (affects enemy bullet amount)
 
-            # determine what row and column to shoot from
-            column = columnList[self.randNums[self.counter] % len(columnList)]
+                # loop enemy shooting in case we hit the limit
+                if self.counter == len(self.randNums):
+                    self.counter = 0
+
+                # determine what row and column to shoot from
+                column = columnList[self.randNums[self.counter] % len(columnList)]
+                for enemy in self.enemies:
+                    if enemy.column == column:
+                        rowList.append(enemy.row)
+                row = rowList[self.randNums[self.counter] % len(rowList)]
+
+                self.counter += 1
+
+                # find the enemy in that row and column and shoot from them
+                for enemy in self.enemies:
+                    if enemy.column == column and enemy.row == row:
+                        self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
+                        self.allSprites.add(self.enemyBullets)
+                        self.timer = time.get_ticks()
+                        #print("col: " + str(column) + " row: " + str(row))
+
+        # make enemies shoot in a random manner
+        else:
+            columnList = []
+            for enemy in self.enemies:
+                columnList.append(enemy.column)
+
+            columnSet = set(columnList)
+            columnList = list(columnSet)
+            shuffle(columnList)
+            column = columnList[0]
+            rowList = []
+
             for enemy in self.enemies:
                 if enemy.column == column:
                     rowList.append(enemy.row)
-            row = rowList[self.randNums[self.counter] % len(rowList)]
-
-            self.counter += 1
-
-            # find the enemy in that row and column and shoot from them
+            row = max(rowList)
             for enemy in self.enemies:
                 if enemy.column == column and enemy.row == row:
-                    self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
-                    self.allSprites.add(self.enemyBullets)
-                    self.timer = time.get_ticks()
-                    #print("col: " + str(column) + " row: " + str(row))
+                    if (time.get_ticks() - self.timer) > 200:  # changed from original 700 (affects enemy bullet amount)
+                        self.enemyBullets.add(Bullet(enemy.rect.x + 14, enemy.rect.y + 20, 1, 5, "enemylaser", "center"))
+                        self.allSprites.add(self.enemyBullets)
+                        self.timer = time.get_ticks()
 
     def calculate_score(self, row):
         scores = {0: 30,
@@ -749,8 +776,10 @@ class SpaceInvaders(object):
             if e.type == QUIT:
                 sys.exit()
 
-    def main(self, maxIterations):
+    def main(self, maxIterations, unrandomize):
         currentGeneration = 0
+
+        self.unrandomizeEnemyShooting = unrandomize
 
         # create init population or load previous population (and then mutate)
         self.newPopulation = self.load_old_and_new_populations()
@@ -836,7 +865,8 @@ class SpaceInvaders(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-i','--iterations',type=int, required=True)
+    parser.add_argument('-i', '--iterations', type=int, required=True)
+    parser.add_argument('-u', '--unrandomize', action='store_true', default=False)
     args = parser.parse_args()
     game = SpaceInvaders()
-    game.main(args.iterations)
+    game.main(args.iterations, args.unrandomize)
