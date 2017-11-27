@@ -734,20 +734,19 @@ class SpaceInvaders(object):
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
 					self.explosionsGroup.update(self.keys, currentTime)
 					self.check_collisions()
-
+					self.create_new_ship(self.makeNewShip, currentTime)
+					self.update_enemy_speed()
+					if len(self.enemies) > 0:
+						self.make_enemies_shoot()
+					
 					#model save
 					score_delta = self.score - self.prev_score
-					self.reward = self.score if not self.gameOver else -100
+					#self.reward = self.score if not self.gameOver else -100
+					self.reward = score_delta if not self.gameOver else -15
 					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
 
-					self.create_new_ship(self.makeNewShip, currentTime)
-					self.update_enemy_speed()
-
 					#print(self.reward)
-
-					if len(self.enemies) > 0:
-						self.make_enemies_shoot()
 	
 			elif self.gameOver:
 				currentTime = time.get_ticks()
@@ -797,7 +796,8 @@ if __name__ == '__main__':
 	args = get_args().parse_args()
 	agent = DQNAgent(800*600, 4)
 
-	game = SpaceInvaders(agent, batch_size=100,
+	game = SpaceInvaders(agent,
+		batch_size=32,
 		save_every=args.save,
 		data_file=args.data_file,
 		model_dir=args.model_directory)
