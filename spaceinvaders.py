@@ -676,6 +676,7 @@ class SpaceInvaders(object):
 				sys.exit()
 
 	def main(self, it):
+		self.move = 0
 		i = 0
 		scoreList = list()
 		while True:
@@ -729,6 +730,7 @@ class SpaceInvaders(object):
 					#model prediction
 					self.prev_score = self.score
 					self.get_q_action()
+					self.move += 1
 
 					#game update
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
@@ -742,9 +744,20 @@ class SpaceInvaders(object):
 					#model save
 					score_delta = self.score - self.prev_score
 					#self.reward = self.score if not self.gameOver else -100
-					self.reward = score_delta if not self.gameOver else -15
+					if score_delta > 0:
+						score_delta = 1
+					elif self.gameOver:
+						score_delta = -1
+
+					self.reward = score_delta
 					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
+					#reinforcement learning
+					if self.move % 8 == 0:
+						self.agent.update_target_model()
+						if len(self.agent.memory) > self.batch_size:
+							print('applying reinforcement')
+							self.agent.replay(self.batch_size)
 
 					#print(self.reward)
 	
@@ -762,11 +775,13 @@ class SpaceInvaders(object):
 					if(game_num % self.save_every == 0):
 						print('Saving weights for game {}'.format(game_num))
 						self.agent.save(os.path.join(self.model_dir, 'game_{}'.format(game_num)))
+					
 					#reinforcement learning
 					self.agent.update_target_model()
 					if len(self.agent.memory) > self.batch_size:
 						print('applying reinforcement')
 						self.agent.replay(self.batch_size)
+					
 					self.update = False
 
 				#end training: save game scores to file and exit
