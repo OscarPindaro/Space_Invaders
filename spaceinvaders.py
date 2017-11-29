@@ -966,10 +966,8 @@ class SpaceInvaders(object):
 				scoreSum = scoreSum + self.score
 				if (i >= it):
 					break
-
 			display.update()
 			self.clock.tick(60)
-
 		print(scoreList)
 		print("Score average: ", scoreSum/i )
 
