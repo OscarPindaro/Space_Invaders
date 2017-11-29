@@ -26,6 +26,10 @@ IMG_NAMES 	= ["ship", "ship", "mystery", "enemy1_1", "enemy1_2", "enemy2_1", "en
 IMAGES 		= {name: image.load("images/{}.png".format(name)).convert_alpha()
 				for name in IMG_NAMES}
 
+INPUT_DIM = (4, 32, 24)
+SCREEN_FACTOR = 25
+
+
 class Ship(sprite.Sprite):
 	def __init__(self):
 		sprite.Sprite.__init__(self)
@@ -293,6 +297,9 @@ class Text(object):
 class SpaceInvaders(object):
 	def __init__(self, agent=None, batch_size=50, save_every=25, data_file=None, model_dir=None):
 		#model-based vars
+		self.previous_state = np.array([])
+		self.current_state = np.array([])
+		self.screen_stack = []
 		file_dir = os.path.dirname(os.path.realpath(__file__))
 		self.prev_score = 0
 		self.agent = agent
@@ -300,7 +307,6 @@ class SpaceInvaders(object):
 		self.save_every = save_every
 		self.data_file = os.path.join(file_dir, data_file)
 		self.model_dir = os.path.join(file_dir, model_dir)
-		self.old_state = []
 		self.action = 0
 		self.update = True
 
@@ -448,9 +454,11 @@ class SpaceInvaders(object):
 		for e in event.get():
 			if e.type == QUIT:
 				sys.exit()
-		self.old_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
+		
+		#self.old_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 		#print(self.old_state.flatten())
-		self.action = self.agent.act(self.old_state)
+		
+		self.action = self.agent.act(self.current_state)
 		if(self.action == 0):
 			self.shoot()
 		if(self.action == 1):
@@ -520,10 +528,11 @@ class SpaceInvaders(object):
 		score = scores[row]
 		self.score += score
 		return score
-	def get_state(self, factor):
+	def get_state(self, factor=SCREEN_FACTOR):
 		self.gameOver = False
 		width = mth.floor(800/factor)
 		height = mth.floor(600/factor)
+
 		state_array = np.zeros([width,height],dtype=np.int)
 		for spr in self.allSprites.sprites():
 			x = mth.floor(spr.rect.center[0] / factor)-1
@@ -675,6 +684,17 @@ class SpaceInvaders(object):
 			if e.type == QUIT:
 				sys.exit()
 
+	def get_reward(self):
+		score_delta = self.score - self.prev_score
+		#self.reward = self.score if not self.gameOver else -100
+		if score_delta > 0:
+			score_delta = 1
+		elif self.gameOver:
+			score_delta = -1
+		else:
+			score_delta = 0
+		return score_delta
+
 	def main(self, it):
 		self.move = 0
 		i = 0
@@ -706,8 +726,7 @@ class SpaceInvaders(object):
 						self.nextRoundText.draw(self.screen)
 						self.livesText.draw(self.screen)
 						self.livesGroup.update(self.keys)
-						# self.check_input()
-						self.get_state(25)
+
 						self.get_q_action()
 					if currentTime - self.gameTimer > 3000:
 						# Move enemies closer to bottom
@@ -724,13 +743,36 @@ class SpaceInvaders(object):
 					self.scoreText.draw(self.screen)
 					self.scoreText2.draw(self.screen)
 					self.livesText.draw(self.screen)
-					# self.check_input()
-					self.get_state(25)
+					
+					
+					#save current frame
+					self.screen_stack.append(self.get_state(SCREEN_FACTOR))
+					
+					#every 4 frames make an action / prediction
+					if len(self.screen_stack) == 4:
 
-					#model prediction
-					self.prev_score = self.score
-					self.get_q_action()
-					self.move += 1
+						#get reward and last 4 frames before any action
+						self.current_state = np.array(self.screen_stack).flatten()[np.newaxis]
+						self.reward = self.get_reward()
+
+
+						#we have sequence:
+						# - previous 4 frames, s_t (self.previous_)
+						# - action
+						# - reward
+						# - following 4 frames, s_t+1 (self.current_)
+						if self.previous_state.any():
+							self.agent.remember(self.previous_state,
+								self.action,
+								self.reward,
+								self.current_state,
+								self.gameOver)
+
+						#set up for next sequence s_t --> s_t+1
+						self.previous_state = self.current_state
+						self.screen_stack = []
+						self.get_q_action()
+
 
 					#game update
 					self.allSprites.update(self.keys, currentTime, self.killedRow, self.killedColumn, self.killedArray)
@@ -741,25 +783,16 @@ class SpaceInvaders(object):
 					if len(self.enemies) > 0:
 						self.make_enemies_shoot()
 					
-					#model save
-					score_delta = self.score - self.prev_score
-					#self.reward = self.score if not self.gameOver else -100
-					if score_delta > 0:
-						score_delta = 1
-					elif self.gameOver:
-						score_delta = -1
 
-					self.reward = score_delta
-					next_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
-					self.agent.remember(self.old_state, self.action, self.reward, next_state, self.gameOver)
+					if self.move % 15 == 0:
+						self.agent.update_target_model()
+
 					#reinforcement learning
 					if self.move % 8 == 0:
-						self.agent.update_target_model()
 						if len(self.agent.memory) > self.batch_size:
-							print('applying reinforcement')
 							self.agent.replay(self.batch_size)
+				
 
-					#print(self.reward)
 	
 			elif self.gameOver:
 				currentTime = time.get_ticks()
@@ -771,17 +804,13 @@ class SpaceInvaders(object):
 					game_num = i
 					scoreList.append((i, self.score))
 					print('Game {} over\nScore: {}'.format(game_num, self.score))
+					
 					#save the weights to the model dir
 					if(game_num % self.save_every == 0):
 						print('Saving weights for game {}'.format(game_num))
 						self.agent.save(os.path.join(self.model_dir, 'game_{}'.format(game_num)))
-					
-					#reinforcement learning
+
 					self.agent.update_target_model()
-					if len(self.agent.memory) > self.batch_size:
-						print('applying reinforcement')
-						self.agent.replay(self.batch_size)
-					
 					self.update = False
 
 				#end training: save game scores to file and exit
@@ -809,7 +838,8 @@ def get_args():
 
 if __name__ == '__main__':
 	args = get_args().parse_args()
-	agent = DQNAgent(800*600, 4)
+	width, height, depth = INPUT_DIM
+	agent = DQNAgent(width * height * depth, 4)
 
 	game = SpaceInvaders(agent,
 		batch_size=32,
