@@ -26,7 +26,7 @@ IMG_NAMES 	= ["ship", "ship", "mystery", "enemy1_1", "enemy1_2", "enemy2_1", "en
 IMAGES 		= {name: image.load("images/{}.png".format(name)).convert_alpha()
 				for name in IMG_NAMES}
 
-INPUT_DIM = (4, 32, 24)
+INPUT_DIM = (2, 32, 24)
 SCREEN_FACTOR = 25
 
 
@@ -457,7 +457,7 @@ class SpaceInvaders(object):
 		
 		#self.old_state = surfarray.array2d(self.screen).flatten()[np.newaxis]
 		#print(self.old_state.flatten())
-		
+		self.move += 1
 		self.action = self.agent.act(self.current_state)
 		if(self.action == 0):
 			self.shoot()
@@ -749,7 +749,7 @@ class SpaceInvaders(object):
 					self.screen_stack.append(self.get_state(SCREEN_FACTOR))
 					
 					#every 4 frames make an action / prediction
-					if len(self.screen_stack) == 4:
+					if len(self.screen_stack) == 2:
 
 						#get reward and last 4 frames before any action
 						self.current_state = np.array(self.screen_stack).flatten()[np.newaxis]
