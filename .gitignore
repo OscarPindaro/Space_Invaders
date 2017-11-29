@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 .idea
 *.vscode
 *.pyc
 
+=======
+.idea/*
+*.pyc
+>>>>>>> force-game-over-2

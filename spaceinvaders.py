@@ -130,9 +130,8 @@ class Enemy(sprite.Sprite):
 
 			self.timer += self.moveTime
 		game.screen.blit(self.image, self.rect)
-		if self.rect.y < 0 or self.rect.y > 600:		#TODO: remove after testing
+		if self.rect.y > 600:
 			self.kill()
-
 
 	def check_column_deletion(self, killedRow, killedColumn, killedArray):
 		if killedRow != -1 and killedColumn != -1:
@@ -314,7 +313,6 @@ class SpaceInvaders(object):
 		# Current enemy starting position
 		self.enemyPosition = self.enemyPositionStart
 		# STORE Enemy sprite locations -- update each time get_state is updated.
-		self.enemySpritesArray = []
 
 	def reset(self, score, lives, newGame=False):
 		self.player = Ship()
@@ -329,7 +327,7 @@ class SpaceInvaders(object):
 		self.reset_lives(lives)
 		self.enemyPosition = self.enemyPositionStart
 		self.make_enemies()		#TODO: determine if it would be etter
-		#self.enemySpritesArray = [] #TODO remove?
+
 		# Only create blockers on a new game, not a new round
 		if newGame:
 			self.allBlockers = sprite.Group(self.make_blockers(0), self.make_blockers(1), self.make_blockers(2),
@@ -655,7 +653,6 @@ class SpaceInvaders(object):
 				enemy.rect.x = 157 + (column * 50)
 				enemy.rect.y = self.enemyPosition + (row * 45)
 				enemies.add(enemy)
-				self.enemySpritesArray.append(enemies)  # TODO: keeop?
 
 		self.enemies = enemies
 		self.allSprites = sprite.Group(self.player, self.enemies, self.livesGroup, self.mysteryShip)
@@ -689,9 +686,8 @@ class SpaceInvaders(object):
 				  2: 20,
 				  3: 10,
 				  4: 10,
-				  5: choice([50, 100, 150, 300])
-				  }
-
+				  5: 150 # choice([50, 100, 150, 300])
+				 }
 		score = scores[row]
 		self.score += score
 		return score
@@ -717,9 +713,6 @@ class SpaceInvaders(object):
 				state_array[row - 3][col] = 1  # keep for sure -- do not even think about deleting
 
 			if type(spr).__name__ == 'Enemy':
-				#self.enemySpritesArray.append(spr) - TODO: put back in?
-				#TODO: add  conditional check
-				print("length of enemySpriteArray: ", len(self.enemySpritesArray))
 				if col < 12:
 					state_array[row - 2][col] = 2
 					state_array[row - 1][col] = 2
@@ -751,6 +744,7 @@ class SpaceInvaders(object):
 			col = mth.floor(blocker.rect.center[1] / Config.widthFactor) - 1
 			state_array[row][col] = 5
 		return state_array  # TODO: remove transpose after testing
+
 
 	def create_main_menu(self):
 		self.enemy1 = IMAGES["enemy3_1"]
@@ -796,7 +790,6 @@ class SpaceInvaders(object):
 					self.sounds["invaderkilled"].play()
 					self.killedRow = currentSprite.row
 					self.killedColumn = currentSprite.column
-#					self.enemySpritesArray.remove(currentSprite)	#TODO: check if valid -- remove
 					score = self.calculate_score(currentSprite.row)
 					explosion = Explosion(currentSprite.rect.x, currentSprite.rect.y, currentSprite.row, False, False,
 										  score)
@@ -870,17 +863,7 @@ class SpaceInvaders(object):
 			self.shipAlive = True
 
 	def create_game_over(self, currentTime):
-		self.screen.blit(self.background, (0, 0))
-		if currentTime - self.timer < 750:
-			self.gameOverText.draw(self.screen)
-		if currentTime - self.timer > 750 and currentTime - self.timer < 1500:
-			self.screen.blit(self.background, (0, 0))
-		if currentTime - self.timer > 1500 and currentTime - self.timer < 2250:
-			self.gameOverText.draw(self.screen)
-		if currentTime - self.timer > 2250 and currentTime - self.timer < 2750:
-			self.screen.blit(self.background, (0, 0))
-		if currentTime - self.timer > 3000:
-			self.mainScreen = True
+		self.mainScreen = True
 
 		for e in event.get():
 			if e.type == QUIT:
@@ -951,13 +934,10 @@ class SpaceInvaders(object):
 					if len(self.enemies) > 0:
 						self.make_enemies_shoot()
 					else:
-						self.gameOver = True		#TODO: remove?
-						print("length = zero. setting game over to true")
+						self.gameOver = True
+						self.startGame = False
 
-			#TODO: absolutely  make this its own function -- game over = true just resets the enemie ships and scores -- does not acutally end and print the score
-			#TODO: change from elif to if
-			if self.gameOver:
-				print("game over!")
+			elif self.gameOver:
 				currentTime = time.get_ticks()
 				# Reset enemy starting position
 				self.enemyPositionStart = self.enemyPositionDefault
@@ -978,15 +958,7 @@ class SpaceInvaders(object):
 		self.create_game_over(currentTime)
 		scoreList.add(i, self.score)
 		scoreSum = scoreSum + self.score
-
-
-		# with open("results.txt", "a") as file:
-		# 	file.write(self.score)
-        #
-		# file.close()
-
-
-
+		print("average score: ", scoreSum)
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
