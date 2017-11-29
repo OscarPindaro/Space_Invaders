@@ -564,7 +564,7 @@ class SpaceInvaders(object):
 		# print(rightWingTip)
 
 
-		# TODO: combine if logic
+		# TODO: combine logic with ^ into one method
 		# returns an empty array if no bullets are coming towards ship
 		highestPriority = self.highestPriorityBullet(enemyBulletsPositions) #TODO: error here -- not actually returning best priority value -- todo comment to return best priority bullet when multiple bullets will hit vulnerable areas of the ship
 
@@ -951,10 +951,13 @@ class SpaceInvaders(object):
 					if len(self.enemies) > 0:
 						self.make_enemies_shoot()
 					else:
-						self.gameOver = True
+						self.gameOver = True		#TODO: remove?
+						print("length = zero. setting game over to true")
 
 			#TODO: absolutely  make this its own function -- game over = true just resets the enemie ships and scores -- does not acutally end and print the score
-			elif self.gameOver:
+			#TODO: change from elif to if
+			if self.gameOver:
+				print("game over!")
 				currentTime = time.get_ticks()
 				# Reset enemy starting position
 				self.enemyPositionStart = self.enemyPositionDefault
@@ -969,6 +972,14 @@ class SpaceInvaders(object):
 
 		print(scoreList)
 		print("Score average: ", scoreSum/i )
+
+	def game_over(self, i, scoreList, scoreSum):
+		currentTime = time.get_ticks()
+		# Reset enemy starting position
+		self.enemyPositionStart = self.enemyPositionDefault
+		self.create_game_over(currentTime)
+		scoreList.add(i, self.score)
+		scoreSum = scoreSum + self.score
 
 
 		# with open("results.txt", "a") as file:
